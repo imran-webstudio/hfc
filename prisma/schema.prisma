@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
+enum AccountType {
+  REGULAR // wallet: charged after delivery
+  ONE_TIME // cash on delivery
+}
+
+enum Slot {
+  LUNCH
+  DINNER
+}
+
+enum OrderStatus {
+  PENDING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  WALLET_CHARGED
+  CASH_PAID
+  DUE
+}
+
+enum LedgerType {
+  DEPOSIT
+  DUE_PAYMENT
+  ADJUSTMENT
+  REFUND
+}
+
+// ---------------------------------------------------------------- Auth.js
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  role        Role        @default(USER)
+  accountType AccountType @default(REGULAR)
+  banned      Boolean     @default(false)
+
+  // member profile
+  employeeId String?
+  phone      String?
+  building   String? // free text written by the member (office name)
+  floor      String?
+  desk       String?
+  address    String?
+  zoneId     String? // catering zone = office the admin assigned / profile selected
+  zone       Office? @relation("UserZone", fields: [zoneId], references: [id], onDelete: SetNull)
+
+  balance Int @default(0) // wallet balance in BDT; negative = due
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  orders         Order[]       @relation("OrderMember")
+  placedOrders   Order[]       @relation("OrderPlacedBy")
+  ledger         LedgerEntry[] @relation("LedgerMember")
+  ledgerCreated  LedgerEntry[] @relation("LedgerCreatedBy")
+  managedOffices OfficeManager[]
+
+  @@index([zoneId])
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ---------------------------------------------------------------- Offices
+model Office {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  address       String?
+  active        Boolean @default(true)
+  lunchCutoff   String  @default("13:00") // HH:mm, Asia/Dhaka
+  dinnerCutoff  String  @default("20:00")
+  offerDinner   Boolean @default(true)
+  createdAt     DateTime @default(now())
+
+  members  User[]         @relation("UserZone")
+  managers OfficeManager[]
+  options  MenuOption[]
+  orders   Order[]
+  dayOffs  DayOff[]
+}
+
+model OfficeManager {
+  officeId String
+  userId   String
+  office   Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([officeId, userId])
+}
+
+model DayOff {
+  officeId String
+  date     String // YYYY-MM-DD (Asia/Dhaka)
+  office   Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@id([officeId, date])
+}
+
+// ---------------------------------------------------------------- Menu
+// A MenuOption is either a weekly template (weekday set) or a dated meal (date set).
+// Options created with "all locations" share a groupId so edits/removals apply to every office.
+model MenuOption {
+  id          String   @id @default(cuid())
+  groupId     String
+  officeId    String
+  slot        Slot
+  weekday     Int? // 0 = Sunday … 6 = Saturday
+  date        String? // YYYY-MM-DD, for dated meals
+  title       String
+  description String?
+  price       Int
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  office    Office     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  stockOuts StockOut[]
+  orders    Order[]
+
+  @@index([officeId, weekday, slot])
+  @@index([officeId, date, slot])
+  @@index([groupId])
+}
+
+model StockOut {
+  optionId String
+  date     String
+  option   MenuOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@id([optionId, date])
+}
+
+model SavedMeal {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  price       Int
+  imageUrl    String?
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------- Orders & wallet
+model Order {
+  id            String        @id @default(cuid())
+  userId        String
+  officeId      String
+  optionId      String?
+  slot          Slot
+  mealDate      String // YYYY-MM-DD (Asia/Dhaka)
+  title         String // snapshot
+  unitPrice     Int // snapshot
+  quantity      Int           @default(1)
+  amount        Int
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+  note          String?
+  placedById    String? // set when an admin placed the order for the member
+  createdAt     DateTime      @default(now())
+  deliveredAt   DateTime?
+  cancelledAt   DateTime?
+
+  user     User        @relation("OrderMember", fields: [userId], references: [id], onDelete: Cascade)
+  placedBy User?       @relation("OrderPlacedBy", fields: [placedById], references: [id], onDelete: SetNull)
+  office   Office      @relation(fields: [officeId], references: [id])
+  option   MenuOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([officeId, mealDate])
+  @@index([mealDate])
+}
+
+model LedgerEntry {
+  id           String     @id @default(cuid())
+  userId       String
+  type         LedgerType
+  amount       Int // signed change to balance
+  balanceAfter Int
+  note         String?
+  createdById  String?
+  createdAt    DateTime   @default(now())
+
+  user      User  @relation("LedgerMember", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("LedgerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
