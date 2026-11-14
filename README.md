@@ -61,6 +61,8 @@ See [`.env.example`](.env.example). Nothing secret is committed; `.env` is git-i
 | Variable | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | yes | Postgres connection string |
+| `DIRECT_URL` | yes | Direct (non-pooled) Postgres URL used by `prisma migrate`. Same as `DATABASE_URL` locally; on Neon use the host without `-pooler` |
+| `DIRECT_URL` | yes | Direct (non-pooled) Postgres URL used by `prisma migrate`. Same as `DATABASE_URL` locally; on Neon use the non-`-pooler` host |
 | `AUTH_SECRET` | yes | Auth.js JWT secret (`openssl rand -base64 32`) |
 | `AUTH_TRUST_HOST` | non-Vercel hosts | set `true` when behind a proxy / on localhost |
 | `AUTH_URL` | optional | public base URL if auto-detection is wrong |
@@ -126,7 +128,7 @@ Business rules live in `src/server/*`, so changing e.g. how deliveries are charg
 
 ## Deploying to Vercel
 
-1. Create a Postgres (Neon / Vercel Postgres / Supabase) and set `DATABASE_URL`.
+1. Create a Postgres (Neon / Vercel Postgres / Supabase) and set `DATABASE_URL` (pooled) and `DIRECT_URL` (direct).
 2. Set `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `SUPER_ADMIN_EMAILS` (+ Cloudinary vars for photos). Leave `ENABLE_DEV_LOGIN` unset.
 3. Add the Google redirect URI `https://<your-domain>/api/auth/callback/google`.
 4. Deploy — the `vercel-build` script runs `prisma generate && prisma migrate deploy && next build`.
