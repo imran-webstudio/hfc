@@ -40,7 +40,7 @@ export function DateBadge({ date, min, max, basePath = "/app" }: { date: string;
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "grid h-11 w-11 place-items-center rounded-xl border text-center leading-none transition",
-          open ? "border-leaf bg-leaf/15" : "border-leaf/30 bg-white/[0.03] hover:bg-leaf/10",
+          open ? "border-leaf bg-leaf/15" : "border-leaf/30 bg-ink/[0.03] hover:bg-leaf/10",
         )}
       >
         <span>
@@ -66,7 +66,7 @@ export function DateBadge({ date, min, max, basePath = "/app" }: { date: string;
               router.push(`${basePath}?date=${toStr(d)}`);
             }}
           />
-          <p className="mt-2 border-t border-white/5 pt-2 text-center text-[11px] text-ink-muted">
+          <p className="mt-2 border-t border-line pt-2 text-center text-[11px] text-ink-muted">
             Selected <b className="text-leaf">{fmtDay(date)}</b>
           </p>
         </div>

@@ -141,9 +141,12 @@ model OfficeManager {
   @@id([officeId, userId])
 }
 
+// One row per office per calendar day. A range is stored as consecutive rows sharing a note.
+// "All offices" on the dashboard writes a row for every active office.
 model DayOff {
   officeId String
   date     String // YYYY-MM-DD (Asia/Dhaka)
+  note     String?
   office   Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
 
   @@id([officeId, date])
@@ -162,6 +165,10 @@ model MenuOption {
   title       String
   description String?
   price       Int
+  // Daily cap for this office's copy of the dish. Null = unlimited.
+  // Remaining = maxQuantity − non-cancelled orders for this option on that meal date.
+  // StockOut is a separate manual "don't serve today" override and is not written when the cap hits 0.
+  maxQuantity Int?
   imageUrl    String?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())

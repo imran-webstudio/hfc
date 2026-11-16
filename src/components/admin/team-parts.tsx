@@ -79,7 +79,7 @@ export function LocationCard({ office }: { office: LocationRow }) {
           onClick={() => act(() => setOfficeActiveAction(office.id, !office.active), { success: office.active ? "Location deactivated" : "Location activated" })}
           className={cn("flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-bold transition", office.active ? "border-leaf/40 bg-leaf/15 text-leaf" : "border-line text-ink-muted")}
         >
-          <span className={cn("relative h-4 w-7 rounded-full transition", office.active ? "bg-leaf" : "bg-white/20")}>
+          <span className={cn("relative h-4 w-7 rounded-full transition", office.active ? "bg-leaf" : "bg-ink/20")}>
             <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-[#04201c] transition-all", office.active ? "left-3.5" : "left-0.5 bg-white")} />
           </span>
           {office.active ? "Active" : "Inactive"}
@@ -102,7 +102,7 @@ export function LocationCard({ office }: { office: LocationRow }) {
         </div>
       </form>
 
-      <div className="mt-3 rounded-xl border border-white/5 bg-black/20 p-3">
+      <div className="mt-3 rounded-xl border border-line bg-ink/5 p-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Managers{office.managers.length ? ` · ${office.managers.length}` : ""}</p>
           <button className="btn btn-leaf btn-sm gap-1.5" onClick={() => setOpen(true)}>
@@ -153,7 +153,7 @@ function ManagersModal({ office, onClose }: { office: LocationRow; onClose: () =
       ) : (
         <ul className="mb-4 space-y-1.5">
           {office.managers.map((m) => (
-            <li key={m.userId} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
+            <li key={m.userId} className="flex items-center justify-between rounded-xl bg-ink/[0.04] px-3 py-2">
               <div>
                 <p className="text-xs font-bold">{m.name}</p>
                 <p className="text-[10px] text-ink-muted">
@@ -178,7 +178,7 @@ function ManagersModal({ office, onClose }: { office: LocationRow; onClose: () =
         {candidates.map((c) => (
           <li key={c.id}>
             <button
-              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-white/5"
+              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-ink/5"
               disabled={pending}
               onClick={() => act(() => addManagerAction(office.id, c.id), { success: `${c.name} is now a manager`, onOk: () => setVersion((v) => v + 1) })}
             >

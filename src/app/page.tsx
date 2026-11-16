@@ -70,10 +70,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
             </form>
           ) : (
             <form action={signInWithGoogle}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-2xl bg-spice px-6 py-3.5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(255,122,69,0.4)] transition hover:bg-spice-deep active:scale-[0.98]"
-              >
+              <button type="submit" className="btn btn-primary px-6 py-3.5 text-sm">
                 <LogIn className="h-4 w-4" strokeWidth={2.25} />
                 Continue with Google
               </button>

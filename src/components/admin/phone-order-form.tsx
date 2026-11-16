@@ -116,12 +116,12 @@ function PhoneOrderForm({ offices, today, maxDays, onClose }: { offices: { id: s
             <>
               <input id="po-member" className="input" placeholder="Search name, email, ID, desk…" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
               {focused && results.length > 0 ? (
-                <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-[#111916] p-1 shadow-2xl">
+                <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-rice p-1 shadow-2xl">
                   {results.map((m) => (
                     <li key={m.id}>
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-white/5"
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-ink/5"
                         onClick={() => {
                           setMember(m);
                           setQ("");

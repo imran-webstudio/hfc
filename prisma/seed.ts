@@ -36,15 +36,15 @@ async function main() {
 
   // ---- offices ----------------------------------------------------------
   const officeData = [
-    { name: "Ambon Complex", address: "Ambon Complex, Dhaka 1212" },
-    { name: "Aparajita Hall", address: "Government Titumir College" },
-    { name: "Medona Tower", address: "Wireless Gate, Mohakhali, Dhaka-1212" },
-    { name: "Others", address: "Mohakhali Dhaka-1212" },
+    { name: "Ambon Complex", address: "Ambon Complex, Dhaka 1212", lunchCutoff: "10:30", dinnerCutoff: "16:00" },
+    { name: "Aparajita Hall", address: "Government Titumir College", lunchCutoff: "10:30", dinnerCutoff: "16:00" },
+    { name: "Medona Tower", address: "Wireless Gate, Mohakhali, Dhaka-1212", lunchCutoff: "10:45", dinnerCutoff: "16:15" },
+    { name: "Others", address: "Mohakhali Dhaka-1212", lunchCutoff: "11:00", dinnerCutoff: "16:30" },
   ];
   const offices: Record<string, string> = {};
   for (const [i, o] of officeData.entries()) {
     const created = await prisma.office.create({
-      data: { ...o, lunchCutoff: "13:00", dinnerCutoff: "20:00", createdAt: new Date(Date.now() - (10 - i) * 1000) },
+      data: { ...o, createdAt: new Date(Date.now() - (10 - i) * 1000) },
     });
     offices[o.name] = created.id;
   }
@@ -177,26 +177,37 @@ async function main() {
   await prisma.officeManager.create({ data: { officeId: offices[APARAJITA], userId: manager.id } });
 
   // ---- menu: weekly templates (Sun=0 … Sat=6) ------------------------------
-  const weekly: { weekday: number; slot: Slot; title: string; description?: string; price: number }[] = [
+  const weekly: { weekday: number; slot: Slot; title: string; description?: string; price: number; maxQuantity?: number }[] = [
     { weekday: 0, slot: "LUNCH", title: "Chicken Curry", description: "ভাত + চিকেন + সবজি + ডাল", price: 100 },
-    { weekday: 0, slot: "LUNCH", title: "Fish Curry", description: "Rice, fish curry, vegetables and dal", price: 90 },
+    { weekday: 0, slot: "LUNCH", title: "Fish Curry", description: "Rice, fish curry, vegetables and dal", price: 90, maxQuantity: 20 },
+    { weekday: 1, slot: "LUNCH", title: "Chicken Curry", description: "Rice, chicken curry, vegetables and dal", price: 120, maxQuantity: 20 },
+    { weekday: 1, slot: "LUNCH", title: "Fish Curry", description: "Rice, fish curry, vegetables and dal", price: 100, maxQuantity: 12 },
+    { weekday: 1, slot: "DINNER", title: "Beef Polao", description: "Fragrant polao with tender beef", price: 150, maxQuantity: 12 },
     { weekday: 2, slot: "LUNCH", title: "Fish Curry", description: "Rice, fish curry, vegetables and dal", price: 100 },
     { weekday: 2, slot: "LUNCH", title: "Chicken Curry", description: "Rice, chicken curry, vegetables and dal", price: 100 },
     { weekday: 3, slot: "LUNCH", title: "Chicken Curry", description: "Rice, chicken curry, vegetables and dal", price: 100 },
     { weekday: 3, slot: "LUNCH", title: "Egg Curry", description: "Rice, egg curry, vegetables and dal", price: 80 },
     { weekday: 5, slot: "LUNCH", title: "Beef Curry", description: "Rice, beef curry, vegetables and dal", price: 160 },
     { weekday: 5, slot: "LUNCH", title: "Egg Curry", description: "Rice, egg curry, vegetables and dal", price: 80 },
+    { weekday: 6, slot: "LUNCH", title: "Chicken Biryani", description: "Basmati rice, potato, boiled egg, salad.", price: 180, maxQuantity: 15 },
+    { weekday: 6, slot: "DINNER", title: "Morog Polao", description: "Chicken polao with salad", price: 140 },
   ];
   for (const w of weekly) {
     const groupId = randomUUID();
     await prisma.menuOption.createMany({
-      data: Object.values(offices).map((officeId) => ({ ...w, description: w.description ?? null, officeId, groupId })),
+      data: Object.values(offices).map((officeId) => ({
+        ...w,
+        description: w.description ?? null,
+        maxQuantity: w.maxQuantity ?? null,
+        officeId,
+        groupId,
+      })),
     });
   }
 
   // ---- menu: dated meals so today/tomorrow are demoable ---------------------
-  const dated: { off: number; slot: Slot; title: string; description: string; price: number }[] = [
-    { off: 0, slot: "LUNCH", title: "Chicken Biryani + Salad", description: "Fragrant basmati rice with spiced chicken", price: 180 },
+  const dated: { off: number; slot: Slot; title: string; description: string; price: number; maxQuantity?: number }[] = [
+    { off: 0, slot: "LUNCH", title: "Chicken Biryani + Salad", description: "Fragrant basmati rice with spiced chicken", price: 180, maxQuantity: 12 },
     { off: 0, slot: "LUNCH", title: "Beef Bhuna + Rice", description: "White rice with beef bhuna and dal", price: 160 },
     { off: 0, slot: "DINNER", title: "Khichuri + Beguni", description: "Comfort khichuri set with beguni", price: 140 },
     { off: 1, slot: "LUNCH", title: "Polao + Chicken Roast", description: "Ghee polao with chicken roast and salad", price: 200 },
@@ -209,7 +220,7 @@ async function main() {
     const groupId = randomUUID();
     for (const [name, officeId] of Object.entries(offices)) {
       const created = await prisma.menuOption.create({
-        data: { officeId, groupId, slot: d.slot, date: dayStr(d.off), title: d.title, description: d.description, price: d.price },
+        data: { officeId, groupId, slot: d.slot, date: dayStr(d.off), title: d.title, description: d.description, price: d.price, maxQuantity: d.maxQuantity ?? null },
       });
       optionIds[`${name}|${idx}`] = created.id;
     }

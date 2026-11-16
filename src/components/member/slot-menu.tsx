@@ -9,7 +9,15 @@ import { Chip } from "@/components/ui/ui";
 import { taka } from "@/lib/money";
 import { cn } from "@/lib/cn";
 
-export type MenuItem = { id: string; title: string; description: string | null; price: number; imageUrl: string | null };
+export type MenuItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  imageUrl: string | null;
+  /** Null = unlimited. 0 = none left today. */
+  remaining: number | null;
+};
 export type ExistingOrder = { id: string; title: string; quantity: number; amount: number; status: string };
 
 export function SlotMenu({
@@ -73,12 +81,15 @@ export function SlotMenu({
                 <li key={it.id}>
                   <button
                     type="button"
-                    disabled={!open}
+                    disabled={!open || it.remaining === 0}
                     aria-pressed={active}
-                    onClick={() => setSelected(active ? null : it.id)}
+                    onClick={() => {
+                      setSelected(active ? null : it.id);
+                      setQty(1);
+                    }}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition disabled:opacity-50",
-                      active ? "border-leaf bg-leaf/10 ring-1 ring-leaf/40" : "border-line bg-white/[0.02] hover:bg-white/5",
+                      active ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "border-line bg-ink/[0.03] hover:bg-ink/5",
                     )}
                   >
                     {it.imageUrl ? (
@@ -87,6 +98,11 @@ export function SlotMenu({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold">{it.title}</span>
                       {it.description ? <span className="block truncate text-[11px] text-ink-muted">{it.description}</span> : null}
+                      {it.remaining != null ? (
+                        <span className={cn("block text-[11px] font-semibold", it.remaining === 0 ? "text-[#E03131]" : "text-ink-muted")}>
+                          {it.remaining} left
+                        </span>
+                      ) : null}
                     </span>
                     <span className="font-display text-sm font-bold text-spice-deep">{taka(it.price)}</span>
                   </button>
@@ -94,16 +110,20 @@ export function SlotMenu({
               );
             })}
           </ul>
-          {chosen && open ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-3">
+          {chosen && open && chosen.remaining !== 0 ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
               <div className="flex items-center gap-2">
                 <span className="field-label !mb-0">Quantity</span>
-                <div className="flex items-center rounded-xl border border-line bg-white/[0.03]">
+                <div className="flex items-center rounded-xl border border-line bg-ink/[0.03]">
                   <button aria-label="Decrease" className="grid h-8 w-8 place-items-center text-ink-muted hover:text-ink" onClick={() => setQty((q) => Math.max(1, q - 1))}>
                     <Minus className="h-3.5 w-3.5" />
                   </button>
                   <span className="w-7 text-center text-sm font-bold">{qty}</span>
-                  <button aria-label="Increase" className="grid h-8 w-8 place-items-center text-ink-muted hover:text-ink" onClick={() => setQty((q) => Math.min(20, q + 1))}>
+                  <button
+                    aria-label="Increase"
+                    className="grid h-8 w-8 place-items-center text-ink-muted hover:text-ink"
+                    onClick={() => setQty((q) => Math.min(chosen.remaining == null ? 20 : Math.min(20, chosen.remaining), q + 1))}
+                  >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>

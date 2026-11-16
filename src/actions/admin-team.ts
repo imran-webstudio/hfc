@@ -6,9 +6,8 @@ import { assertStaff, assertSuperAdmin } from "@/lib/session";
 import { addManager, createOffice, managerCandidates, removeManager, setLunchCutoff, setOfficeActive } from "@/server/offices";
 import { officeScope } from "@/lib/session";
 import { UserError } from "@/lib/action";
-import { setDayOff } from "@/server/stats";
-import { listOffices } from "@/server/offices";
-import { isDateStr } from "@/lib/time";
+import { officeIdsForFilter, resumeCatering, setDayOff, setDayOffRange } from "@/server/stats";
+import { isDateStr, todayStr } from "@/lib/time";
 
 const refresh = () => revalidatePath("/", "layout");
 
@@ -64,12 +63,25 @@ export async function setDayOffAction(office: string, date: string, off: boolean
   return run(async () => {
     const viewer = await assertStaff();
     if (!isDateStr(date)) throw new UserError("Invalid date.");
-    const scope = officeScope(viewer);
-    let ids: string[];
-    if (office === "all") ids = (await listOffices({ scope, activeOnly: true })).map((o) => o.id);
-    else if (scope && !scope.includes(office)) throw new UserError("You can't change that location.");
-    else ids = [office];
-    await setDayOff(ids, date, off);
+    await setDayOff(await officeIdsForFilter(officeScope(viewer), office), date, off);
+    refresh();
+  });
+}
+
+/** Inclusive start/end. One DayOff row per date per office, with the same note. */
+export async function setDayOffRangeAction(office: string, start: string, end: string, note: string) {
+  return run(async () => {
+    const viewer = await assertStaff();
+    await setDayOffRange(await officeIdsForFilter(officeScope(viewer), office), start, end, note);
+    refresh();
+  });
+}
+
+/** Clear day-offs from today forward for the offices in the current filter. */
+export async function resumeCateringAction(office: string) {
+  return run(async () => {
+    const viewer = await assertStaff();
+    await resumeCatering(await officeIdsForFilter(officeScope(viewer), office), todayStr());
     refresh();
   });
 }

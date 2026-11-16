@@ -47,7 +47,7 @@ export function InstallPrompt() {
 
   if (!visible || pathname === "/") return null;
   return (
-    <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+    <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4 lg:bottom-6">
       <div className="surface-card flex w-full max-w-md items-start gap-3 rounded-2xl p-3.5 shadow-2xl">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-leaf/15 text-leaf">
           <Download className="h-5 w-5" />

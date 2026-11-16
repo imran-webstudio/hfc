@@ -40,9 +40,11 @@ export async function listMembers(scope: OfficeScope, f: MemberFilters) {
   });
 }
 
-export async function memberFloors(scope: OfficeScope) {
+export async function memberFloors(scope: OfficeScope, officeId?: string) {
   const rows = await prisma.user.findMany({
-    where: { AND: [memberScopeWhere(scope), { floor: { not: null } }] },
+    where: {
+      AND: [memberScopeWhere(scope), officeId && officeId !== "all" ? { zoneId: officeId } : {}, { floor: { not: null } }],
+    },
     select: { floor: true },
     distinct: ["floor"],
   });

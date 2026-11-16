@@ -32,7 +32,7 @@ export function ActivityList({ items, heading, admin }: { items: ActivityItem[];
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold">{heading}</h2>
-        <div className="flex rounded-xl border border-white/5 bg-white/[0.03] p-0.5" role="tablist">
+        <div className="flex rounded-xl border border-line bg-ink/[0.03] p-0.5" role="tablist">
           {FILTERS.map((f) => (
             <button
               key={f.id}

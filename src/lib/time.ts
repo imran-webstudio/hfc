@@ -48,6 +48,35 @@ export function fmtDay(dateStr: string): string {
   return `${WEEKDAYS_SHORT[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`;
 }
 
+/** "14 Nov" */
+export function fmtShort(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`;
+}
+
+/** Saturday→Friday week that contains `dateStr`. Weekday number → YYYY-MM-DD. */
+export function weekOf(dateStr: string): Record<number, string> {
+  const sinceSat = (weekdayOf(dateStr) + 1) % 7;
+  const saturday = addDays(dateStr, -sinceSat);
+  const out: Record<number, string> = {};
+  WEEK_ORDER.forEach((weekday, i) => {
+    out[weekday] = addDays(saturday, i);
+  });
+  return out;
+}
+
+/** Hour 0–23 in Asia/Dhaka. */
+export function dhakaHour(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dhaka", hour: "numeric", hourCycle: "h23" }).formatToParts(now);
+  return Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+}
+
+export function greeting(name: string, now: Date = new Date()): string {
+  const h = dhakaHour(now);
+  const hello = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  return `${hello}, ${name}`;
+}
+
 export function dayParts(dateStr: string): { day: number; mon: string } {
   const d = new Date(`${dateStr}T00:00:00Z`);
   return { day: d.getUTCDate(), mon: MONTHS_SHORT[d.getUTCMonth()].toUpperCase() };
