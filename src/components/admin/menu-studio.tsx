@@ -228,9 +228,9 @@ function CutoffCard({ offices, initialId }: { offices: Office[]; initialId: stri
           <h2 className="text-base font-semibold">Order cutoffs</h2>
           <p className="text-xs text-ink-muted">Members cannot place that meal after this time, in Asia/Dhaka. Cutoffs stay per office.</p>
         </div>
-        <label className="block w-full sm:w-56">
+        <label className="block w-full sm:w-56" htmlFor="cutoff-office">
           <span className="field-label">Office</span>
-          <select className="input" value={office.id} onChange={(e) => setOfficeId(e.target.value)}>
+          <select id="cutoff-office" name="office" autoComplete="off" className="input" value={office.id} onChange={(e) => setOfficeId(e.target.value)}>
             {offices.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -240,13 +240,13 @@ function CutoffCard({ offices, initialId }: { offices: Office[]; initialId: stri
         </label>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="block w-36">
+        <label className="block w-36" htmlFor="cutoff-lunch">
           <span className="field-label">Lunch cutoff</span>
-          <input className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="10:30" value={lunch} onChange={(e) => setLunch(e.target.value)} />
+          <input id="cutoff-lunch" name="lunchCutoff" autoComplete="off" className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="10:30" value={lunch} onChange={(e) => setLunch(e.target.value)} />
         </label>
-        <label className="block w-36">
+        <label className="block w-36" htmlFor="cutoff-dinner">
           <span className="field-label">Dinner cutoff</span>
-          <input className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="16:00" value={dinner} onChange={(e) => setDinner(e.target.value)} />
+          <input id="cutoff-dinner" name="dinnerCutoff" autoComplete="off" className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="16:00" value={dinner} onChange={(e) => setDinner(e.target.value)} />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!dirty || pending}>
           Save
@@ -315,25 +315,25 @@ function DishModal({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <label className="mb-3 block">
+        <label className="mb-3 block" htmlFor={`dish-title-${mode}-${weekday}-${slot}`}>
           <span className="field-label">Title</span>
-          <input className="input" required autoFocus placeholder="e.g. Chicken Curry with rice" value={draft.title} onChange={(e) => onChange({ ...draft, title: e.target.value })} />
+          <input id={`dish-title-${mode}-${weekday}-${slot}`} name="title" autoComplete="off" className="input" required autoFocus placeholder="e.g. Chicken Curry with rice" value={draft.title} onChange={(e) => onChange({ ...draft, title: e.target.value })} />
         </label>
-        <label className="mb-3 block">
+        <label className="mb-3 block" htmlFor={`dish-description-${mode}-${weekday}-${slot}`}>
           <span className="field-label">Description</span>
-          <textarea className="input min-h-20 resize-y" value={draft.description} onChange={(e) => onChange({ ...draft, description: e.target.value })} />
+          <textarea id={`dish-description-${mode}-${weekday}-${slot}`} name="description" autoComplete="off" className="input min-h-20 resize-y" value={draft.description} onChange={(e) => onChange({ ...draft, description: e.target.value })} />
         </label>
         <div className="mb-3 grid grid-cols-2 gap-3">
-          <label className="block">
+          <label className="block" htmlFor={`dish-price-${mode}-${weekday}-${slot}`}>
             <span className="field-label">Price</span>
             <span className="relative block">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">৳</span>
-              <input className="input tnum pl-8" inputMode="numeric" required placeholder="" value={draft.price} onChange={(e) => onChange({ ...draft, price: e.target.value.replace(/[^\d]/g, "") })} />
+              <input id={`dish-price-${mode}-${weekday}-${slot}`} name="price" autoComplete="off" className="input tnum pl-8" inputMode="numeric" required placeholder="" value={draft.price} onChange={(e) => onChange({ ...draft, price: e.target.value.replace(/[^\d]/g, "") })} />
             </span>
           </label>
-          <label className="block">
+          <label className="block" htmlFor={`dish-max-${mode}-${weekday}-${slot}`}>
             <span className="field-label">Maximum quantity</span>
-            <input className="input tnum" inputMode="numeric" placeholder="Unlimited" value={draft.maxQuantity} onChange={(e) => onChange({ ...draft, maxQuantity: e.target.value.replace(/[^\d]/g, "") })} />
+            <input id={`dish-max-${mode}-${weekday}-${slot}`} name="maxQuantity" autoComplete="off" className="input tnum" inputMode="numeric" placeholder="Unlimited" value={draft.maxQuantity} onChange={(e) => onChange({ ...draft, maxQuantity: e.target.value.replace(/[^\d]/g, "") })} />
           </label>
         </div>
         {error ? <p className="mb-2 text-xs text-[#E03131]">{error}</p> : null}

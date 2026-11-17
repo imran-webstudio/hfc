@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { MapPin, Minus, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { MapPin, Minus, Plus, UtensilsCrossed } from "lucide-react";
 import { cancelOrderAction, placeOrderAction } from "@/actions/member";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
+import { statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
 
 export type MenuItem = {
@@ -27,6 +28,25 @@ export type FoodSlot = {
   items: MenuItem[];
   existing: ExistingOrder | null;
 };
+
+function DishPlaceholder({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="absolute inset-0" aria-hidden>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#E4E0FF] via-[#F6F6F2] to-[#DDF4F0] dark:from-[#1C1C28] dark:via-[#14141C] dark:to-[#12161A]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_20%,rgba(91,76,245,0.38),transparent_46%),radial-gradient(circle_at_82%_78%,rgba(212,255,58,0.42),transparent_42%),radial-gradient(circle_at_68%_32%,rgba(20,184,166,0.28),transparent_40%)] dark:bg-[radial-gradient(circle_at_24%_20%,rgba(91,76,245,0.32),transparent_48%),radial-gradient(circle_at_84%_80%,rgba(212,255,58,0.14),transparent_42%),radial-gradient(circle_at_68%_32%,rgba(20,184,166,0.18),transparent_40%)]" />
+      <div className={cn("absolute inset-0 grid place-items-center text-[#5B4CF5]/50 dark:text-[#C8C2FF]/40", compact ? "" : "pb-14")}>
+        <UtensilsCrossed className={compact ? "h-5 w-5" : "h-9 w-9"} strokeWidth={1.4} />
+      </div>
+    </div>
+  );
+}
+
+function DishPhoto({ src, alt, sizes, compact = false }: { src: string | null; alt: string; sizes?: string; compact?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) return <DishPlaceholder compact={compact} />;
+  return <Image src={src} alt={alt} fill unoptimized className="object-cover" sizes={sizes} onError={() => setFailed(true)} />;
+}
 
 export function OrderFood({
   dayName,
@@ -94,12 +114,8 @@ export function OrderFood({
               const on = selected === it.id;
               const max = it.remaining == null ? 20 : Math.min(20, it.remaining);
               return (
-                <li key={it.id} className="relative aspect-square overflow-hidden rounded-[1.4rem] bg-[#E7E7E4]">
-                  {it.imageUrl ? (
-                    <Image src={it.imageUrl} alt="" fill unoptimized className="object-cover" sizes="(min-width:1024px) 280px, 45vw" />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#E7E4F8] to-[#F4F4F1]" />
-                  )}
+                <li key={it.id} className="relative aspect-square overflow-hidden rounded-[1.4rem] bg-[#E7E7E4] dark:bg-[#14141C]">
+                  <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
                   {it.remaining != null ? (
                     <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-ink">{it.remaining} left</span>
                   ) : null}
@@ -144,7 +160,7 @@ export function OrderFood({
             <p className="text-sm">
               <span className="font-semibold">{slot.existing.title}</span>
               <span className="text-ink-muted"> ×{slot.existing.quantity}</span>
-              <span className="ml-2 text-xs uppercase text-ink-muted">{slot.existing.status}</span>
+              <span className="ml-2 text-xs text-ink-muted">{statusLabel(slot.existing.status)}</span>
             </p>
             {slot.existing.status === "PENDING" ? (
               <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => cancelOrderAction(slot.existing!.id), { success: "Order cancelled" })}>
@@ -159,8 +175,8 @@ export function OrderFood({
         <h2 className="text-lg font-semibold">Your order</h2>
         {chosen ? (
           <div className="mt-4 flex items-center gap-3">
-            <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-[#E7E7E4]">
-              {chosen.imageUrl ? <Image src={chosen.imageUrl} alt="" fill unoptimized className="object-cover" /> : null}
+            <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-[#E7E7E4] dark:bg-[#14141C]">
+              <DishPhoto src={chosen.imageUrl} alt="" compact />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{chosen.title}</p>
@@ -194,7 +210,7 @@ export function OrderFood({
           ) : null}
         </div>
         <button
-          className="btn mt-4 h-12 w-full bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020]"
+          className="btn cta mt-4 h-12 w-full"
           disabled={pending || !chosen || !slot.open}
           onClick={() => chosen && act(() => placeOrderAction({ optionId: chosen.id, date, quantity: qty }), { success: `Order placed — ${taka(total)}`, onOk: () => setSelected(null) })}
         >
@@ -210,7 +226,7 @@ export function OrderFood({
           </span>
           <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">Wallet after {signedTaka(after)}</span>
           <button
-            className="btn h-10 shrink-0 rounded-full bg-[#D4FF3A] px-3 text-sm text-[#0B0B0F]"
+            className="btn cta h-10 shrink-0 rounded-full px-3 text-sm"
             disabled={pending}
             onClick={() => act(() => placeOrderAction({ optionId: chosen.id, date, quantity: qty }), { success: `Order placed — ${taka(total)}`, onOk: () => setSelected(null) })}
           >

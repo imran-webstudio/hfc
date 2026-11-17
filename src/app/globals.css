@@ -302,6 +302,22 @@ html.dark .blob-c {
     opacity: 1;
     cursor: default;
   }
+  .btn.cta {
+    background: #d4ff3a;
+    color: #0b0b0f;
+  }
+  .btn.cta:hover:not(:disabled) {
+    background: #c6f020;
+  }
+  .btn.cta:disabled {
+    opacity: 1;
+    background: #e4e4df;
+    color: #8e8e98;
+  }
+  html.dark .btn.cta:disabled {
+    background: #2a2a36;
+    color: #6f6f7c;
+  }
   .btn-squeeze {
     width: 100%;
     min-width: 0;
