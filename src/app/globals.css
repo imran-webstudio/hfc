@@ -316,6 +316,42 @@ html.dark .blob-c {
     border-radius: 0.75rem;
   }
 
+  /* Google Identity branding: white / #131314 fill, grey stroke, unaltered four-colour G. */
+  .btn-google {
+    display: flex;
+    width: 100%;
+    min-height: 3.25rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    border-radius: 0.875rem;
+    border: 1px solid #747775;
+    background: #ffffff;
+    color: #1f1f1f;
+    padding: 0.85rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+  .btn-google:hover {
+    background: #f2f2f2;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.18);
+  }
+  .btn-google:focus-visible {
+    outline: 2px solid #4285f4;
+    outline-offset: 2px;
+  }
+  html.dark .btn-google {
+    border-color: #8e918f;
+    background: #131314;
+    color: #e3e3e3;
+  }
+  html.dark .btn-google:hover {
+    background: #1f1f1f;
+  }
+
   .icon-btn {
     display: inline-flex;
     height: 2.75rem;
