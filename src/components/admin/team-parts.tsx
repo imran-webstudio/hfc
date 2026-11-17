@@ -22,7 +22,7 @@ export function NewLocationForm() {
   const [cutoff, setCutoff] = useState("14:00");
   return (
     <form
-      className="surface-card mb-8 space-y-4 rounded-2xl p-5"
+      className="surface-card mb-8 space-y-4 rounded-3xl p-5"
       onSubmit={(e) => {
         e.preventDefault();
         act(() => createOfficeAction({ name, address, cutoff }), {
@@ -65,7 +65,7 @@ export function LocationCard({ office }: { office: LocationRow }) {
   const dirty = cutoff.trim() !== office.lunchCutoff;
 
   return (
-    <li className="surface-card rounded-2xl p-4">
+    <li className="surface-card rounded-3xl p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-display text-sm font-bold">{office.name}</p>

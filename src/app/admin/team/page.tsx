@@ -1,6 +1,4 @@
-import { Shield } from "lucide-react";
 import { LocationCard, NewLocationForm } from "@/components/admin/team-parts";
-import { PageTitle } from "@/components/ui/ui";
 import { requireSuperAdminPage } from "@/lib/session";
 import { listOfficesWithManagers } from "@/server/offices";
 
@@ -11,9 +9,8 @@ export default async function TeamPage() {
   const offices = await listOfficesWithManagers();
   return (
     <div className="mx-auto max-w-3xl">
-      <PageTitle icon={<Shield className="h-5 w-5" />} title="Staff & offices">
-        Create offices, set cutoffs, and assign managers who can run each location.
-      </PageTitle>
+      <h1 className="mb-4 hidden text-3xl font-semibold tracking-tight lg:block">Team</h1>
+      <p className="mb-6 text-sm text-ink-muted">Create offices, set cutoffs, and assign managers who can run each location.</p>
       <NewLocationForm />
       <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-ink-muted">Locations</h2>
       <ul className="space-y-4">

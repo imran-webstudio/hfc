@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Phone, User, Wallet } from "lucide-react";
 import { MemberActions } from "@/components/admin/member-actions";
+import { UserDanger } from "@/components/admin/user-danger";
 import { ActivityList } from "@/components/member/activity-list";
 import { StatsGrid } from "@/components/member/stats-grid";
 import { Chip, PageTitle } from "@/components/ui/ui";
@@ -44,6 +45,7 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           </div>
           <MemberActions memberId={member.id} name={member.name ?? "member"} phone={member.phone ?? ""} balance={member.balance} />
         </div>
+        <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} accountType={member.accountType} protectedRole={member.role === "SUPER_ADMIN"} />
         <p className="mt-3 flex items-center gap-2 text-xs">
           <Phone className="h-3.5 w-3.5 text-ink-muted" />
           <span className="text-ink-muted">Phone:</span>
@@ -63,7 +65,7 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
       </div>
 
       <StatsGrid s={summary} />
-      <ActivityList items={summary.activity} heading="Full history" admin />
+      <ActivityList items={summary.activity} heading="Full history" />
     </div>
   );
 }

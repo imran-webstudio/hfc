@@ -4,6 +4,7 @@ import { signOutAction } from "@/actions/auth";
 import { AccountFigure } from "@/components/shell/account";
 import { AdminPhoneBar, AdminSideNav, AdminTabBar } from "@/components/shell/admin-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { OfflineBanner } from "@/components/ui/offline-banner";
 import { requireStaff } from "@/lib/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +35,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </aside>
       <div className="min-w-0 flex-1">
         <AdminPhoneBar firstName={first} />
-        <main className="px-4 pb-28 pt-1 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
+        <main className="px-4 pb-[calc(12rem+env(safe-area-inset-bottom))] pt-1 lg:px-8 lg:pb-12 lg:pt-8">
+          <OfflineBanner />
+          {children}
+        </main>
       </div>
       <AdminTabBar />
     </div>

@@ -68,6 +68,52 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       ? (MESSAGES[error] ?? "Sign-in failed. Please try again.")
       : null;
 
+  if (suspended) {
+    const person = session?.user?.id
+      ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, employeeId: true } })
+      : null;
+    return (
+      <main className="relative flex min-h-dvh flex-col px-5 py-5">
+        <header className="flex items-start justify-between">
+          <div>
+            <p className="text-2xl font-bold tracking-tight">HFC</p>
+            <p className="text-sm text-ink-muted">Home Flavour Catering <span className="text-[#5B4CF5]">•</span></p>
+          </div>
+          <ThemeToggle />
+        </header>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center text-center">
+          <div className="grid h-36 w-36 place-items-center rounded-[2rem] bg-white shadow-sm">
+            <svg viewBox="0 0 48 48" className="h-16 w-16 text-[#5B4CF5]" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+              <rect x="12" y="22" width="24" height="18" rx="4" />
+              <path d="M18 22v-6a6 6 0 0 1 12 0v6" />
+              <circle cx="24" cy="31" r="2" fill="currentColor" />
+            </svg>
+          </div>
+          <h1 className="mt-8 text-4xl font-semibold tracking-tight">Account blocked</h1>
+          <p className="mt-3 max-w-sm text-ink-muted">You can&apos;t sign in or place orders right now. Contact your office catering manager to restore access.</p>
+          <p role="alert" className="sr-only">{message}</p>
+          {person ? (
+            <div className="mt-6 flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 text-left shadow-sm">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#ECECEF] text-sm font-bold">{(person.name ?? "?").slice(0, 1)}</span>
+              <span>
+                <span className="block font-semibold">{person.name ?? "Member"}</span>
+                <span className="block text-sm text-ink-muted">{person.employeeId ? `ID ${person.employeeId}` : "Office account"}</span>
+              </span>
+            </div>
+          ) : null}
+          <a href="mailto:?subject=Restore%20my%20Home%20Flavour%20account" className="btn mt-6 h-12 w-full rounded-full bg-[#D4FF3A] text-[#0B0B0F]">
+            Contact catering team
+          </a>
+          <form action={signOutAction} className="mt-4 w-full">
+            <button type="submit" className="btn btn-text w-full">
+              Back to sign in
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative flex min-h-dvh flex-col">
       <div aria-hidden className="pointer-events-none absolute -right-24 -top-20 h-80 w-80 rounded-full bg-[#5B4CF5]/35 blur-3xl dark:bg-[#5B4CF5]/25 lg:hidden" />

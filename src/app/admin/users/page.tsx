@@ -1,7 +1,6 @@
-import { Users } from "lucide-react";
+import { Suspense } from "react";
 import { FilterSearch, FilterSelect } from "@/components/admin/filters";
-import { UserCard, type UserRow } from "@/components/admin/user-card";
-import { EmptyNote, PageTitle } from "@/components/ui/ui";
+import { UsersBoard, type UserRow } from "@/components/admin/user-card";
 import { floorLabel } from "@/lib/floors";
 import { prisma } from "@/lib/prisma";
 import { officeScope, requireStaff } from "@/lib/session";
@@ -41,47 +40,40 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     zoneId: m.zoneId,
     balance: m.balance,
     due: Math.max(0, -m.balance) + (cashBy.get(m.id) ?? 0),
-    wrote: [
-      m.address ? `Wrote: ${m.address}` : null,
-      m.employeeId,
-      m.building ? `Bldg ${m.building}` : null,
-      m.floor ? `Fl ${m.floor}` : null,
-      m.desk ? `Desk ${m.desk}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    employeeId: m.employeeId,
+    officeName: m.zone?.name ?? null,
+    floor: m.floor,
   }));
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <PageTitle icon={<Users className="h-5 w-5" />} title="Users & deposits">
-        Assign catering zones. Set Regular / One-time. Deposit, ban, or permanently delete members.
-      </PageTitle>
-
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <FilterSelect
-          param="zone"
-          label="Zone"
-          value={zone}
-          options={[
-            { value: "all", label: "All zones" },
-            { value: "none", label: "Unassigned (no zone)" },
-            ...offices.map((o) => ({ value: o.id, label: o.name })),
-          ]}
-        />
-        <FilterSelect param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
-        <FilterSearch param="q" label="Search" value={q} placeholder="Name, email, employee ID" />
-      </div>
-
-      {rows.length === 0 ? (
-        <EmptyNote>No members match these filters.</EmptyNote>
-      ) : (
-        <ul className="space-y-2.5">
-          {rows.map((u) => (
-            <UserCard key={u.id} u={u} offices={offices.map((o) => ({ id: o.id, name: o.name }))} canAssignNone={viewer.isSuperAdmin} />
-          ))}
-        </ul>
-      )}
+    <div className="mx-auto max-w-3xl">
+      <h1 className="mb-4 hidden text-3xl font-semibold tracking-tight lg:block lg:text-4xl">Users & deposits</h1>
+      <UsersBoard
+        rows={rows}
+        search={
+          <Suspense>
+            <FilterSearch bare param="q" label="Search" value={q} placeholder="Name or employee ID" className="w-full" />
+          </Suspense>
+        }
+        filters={
+          <Suspense>
+            <>
+              <FilterSelect
+                bare
+                param="zone"
+                label="Office"
+                value={zone}
+                options={[
+                  { value: "all", label: "All offices" },
+                  { value: "none", label: "Unassigned" },
+                  ...offices.map((o) => ({ value: o.id, label: o.name })),
+                ]}
+              />
+              <FilterSelect bare param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
+            </>
+          </Suspense>
+        }
+      />
     </div>
   );
 }

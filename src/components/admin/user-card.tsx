@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Ban, MapPin, Repeat, Trash2, Wallet, RotateCcw } from "lucide-react";
-import { assignZoneAction, banAction, deleteMemberAction, depositAction, setAccountTypeAction } from "@/actions/admin-users";
-import { ConfirmDialog } from "@/components/ui/modal";
+import { useMemo, useState } from "react";
+import { ChevronRight, Search, Wallet, X } from "lucide-react";
+import { depositAction } from "@/actions/admin-users";
 import { useAct } from "@/components/ui/use-act";
-import { Chip } from "@/components/ui/ui";
-import { taka } from "@/lib/money";
+import { signedTaka, taka } from "@/lib/money";
+import { cn } from "@/lib/cn";
 
 export type UserRow = {
   id: string;
@@ -19,136 +18,161 @@ export type UserRow = {
   zoneId: string | null;
   balance: number;
   due: number;
-  wrote: string;
+  employeeId: string | null;
+  officeName: string | null;
+  floor: string | null;
 };
 
-export function UserCard({ u, offices, canAssignNone }: { u: UserRow; offices: { id: string; name: string }[]; canAssignNone: boolean }) {
-  const { act, pending } = useAct();
-  const [depositOpen, setDepositOpen] = useState(false);
-  const [amount, setAmount] = useState<number | "">(1000);
-  const [note, setNote] = useState("");
-  const [confirm, setConfirm] = useState<"delete" | "ban" | null>(null);
-  const regular = u.accountType === "REGULAR";
-  const protectedRole = u.role === "SUPER_ADMIN";
+const AVATARS = [
+  { bg: "#5B4CF5", fg: "#fff" },
+  { bg: "#D4FF3A", fg: "#0B0B0F" },
+  { bg: "#FB7185", fg: "#fff" },
+  { bg: "#7C6BF2", fg: "#fff" },
+  { bg: "#9CA3AF", fg: "#fff" },
+];
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+function avatar(name: string, banned: boolean) {
+  if (banned) return { bg: "#D9D9DE", fg: "#3A3A44" };
+  let n = 0;
+  for (const c of name) n = (n + c.charCodeAt(0)) % AVATARS.length;
+  return AVATARS[n];
+}
+
+export function UsersBoard({ rows, search, filters }: { rows: UserRow[]; search?: React.ReactNode; filters?: React.ReactNode }) {
+  const [dueOnly, setDueOnly] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const due = rows.reduce((s, r) => s + Math.max(0, -r.balance), 0);
+  const credit = rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
+  const shown = dueOnly ? rows.filter((r) => r.balance < 0 || r.due > 0) : rows;
 
   return (
-    <li className="surface-card rounded-2xl px-4 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/admin/users/${u.id}`} className="font-display text-sm font-bold text-leaf-deep hover:underline">
-              {u.name}
-            </Link>
-            <Chip tone="muted" className="!text-[9px]">{u.role}</Chip>
-            {u.isManager ? <Chip tone="amber" className="!text-[9px]">MANAGER</Chip> : null}
-            {u.banned ? <Chip tone="red" className="!text-[9px]">BANNED</Chip> : null}
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="surface-card flex min-w-[16rem] flex-1 items-stretch rounded-2xl px-4 py-3 sm:max-w-md">
+          <div className="flex-1">
+            <p className="text-xs font-medium text-ink-muted">Due</p>
+            <p className="tnum text-2xl font-semibold text-[#E03131]">{taka(due)}</p>
           </div>
-          <p className="mt-0.5 text-[11px] text-ink-muted">{u.wrote || "No profile details yet"}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {u.due > 0 ? <Chip tone="red">Due {taka(u.due)}</Chip> : <span className="text-xs font-semibold">Bal {taka(u.balance)}</span>}
-            <Chip tone="leaf">{regular ? "Regular" : "One-time"}</Chip>
-            <label className="chip chip-leaf cursor-pointer gap-1 !pr-1">
-              <MapPin className="h-3 w-3" />
-              <select
-                aria-label={`Assign zone for ${u.name}`}
-                className="cursor-pointer appearance-auto bg-transparent text-[10.5px] font-bold outline-none [&>option]:bg-rice [&>option]:text-ink"
-                value={u.zoneId ?? ""}
-                disabled={pending}
-                onChange={(e) => act(() => assignZoneAction(u.id, e.target.value || null), { success: "Zone updated" })}
-              >
-                {canAssignNone ? <option value="">Unassigned</option> : u.zoneId ? null : <option value="">Unassigned</option>}
-                {offices.map((o) => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </select>
-            </label>
+          <div className="mx-4 w-px bg-line" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-ink-muted">Credit</p>
+            <p className="tnum text-2xl font-semibold text-[#0F9B8E]">{taka(credit)}</p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-1.5">
-          <button
-            className="icon-btn"
-            title={regular ? "Switch to One-time" : "Switch to Regular"}
-            aria-label={regular ? "Switch to One-time" : "Switch to Regular"}
-            disabled={pending}
-            onClick={() => act(() => setAccountTypeAction(u.id, regular ? "ONE_TIME" : "REGULAR"), { success: regular ? "Switched to One-time" : "Switched to Regular" })}
-          >
-            <Repeat className="h-4 w-4" />
-          </button>
-          {regular ? (
-            <button className="icon-btn" title="Deposit to wallet" aria-label="Deposit to wallet" onClick={() => setDepositOpen((o) => !o)}>
-              <Wallet className="h-4 w-4" />
-            </button>
-          ) : null}
-          {!protectedRole ? (
-            <>
-              <button
-                className="icon-btn danger"
-                title={u.banned ? "Unban member" : "Ban member"}
-                aria-label={u.banned ? "Unban member" : "Ban member"}
-                onClick={() => (u.banned ? act(() => banAction(u.id, false), { success: "Member unbanned" }) : setConfirm("ban"))}
-              >
-                {u.banned ? <RotateCcw className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-              </button>
-              <button className="icon-btn danger" title={`Delete ${u.name}`} aria-label={`Delete ${u.name}`} onClick={() => setConfirm("delete")}>
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </>
-          ) : null}
-        </div>
+        <button type="button" className="btn hidden bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020] lg:inline-flex" onClick={() => setPayOpen(true)}>
+          <Wallet className="h-4 w-4" /> Add money
+        </button>
       </div>
 
-      {depositOpen && regular ? (
-        <form
-          className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            act(() => depositAction(u.id, Number(amount), note), {
-              success: `Recorded ${taka(Number(amount))} for ${u.name}`,
-              onOk: () => {
-                setDepositOpen(false);
-                setNote("");
-                setAmount(1000);
-              },
-            });
-          }}
-        >
-          <div className="w-44">
-            <label className="field-label" htmlFor={`amt-${u.id}`}>Amount ৳</label>
-            <input id={`amt-${u.id}`} type="number" min={1} required className="input" value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
-          </div>
-          <div className="min-w-48 flex-1">
-            <label className="field-label" htmlFor={`note-${u.id}`}>Note</label>
-            <input id={`note-${u.id}`} className="input" placeholder="Cash received" value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-          <button type="submit" className="btn btn-spice" disabled={pending}>
-            Record
-          </button>
-          <button type="button" className="btn btn-text" onClick={() => setDepositOpen(false)}>
-            Cancel
-          </button>
-        </form>
-      ) : null}
+      {search ? <div className="mb-3">{search}</div> : null}
 
-      <ConfirmDialog
-        open={confirm === "delete"}
-        title={`Delete ${u.name}?`}
-        text="This permanently deletes the member with all their orders and wallet history. This can't be undone."
-        confirmLabel="Delete member"
-        danger
-        busy={pending}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => act(() => deleteMemberAction(u.id), { success: "Member deleted", onOk: () => setConfirm(null) })}
-      />
-      <ConfirmDialog
-        open={confirm === "ban"}
-        title={`Ban ${u.name}?`}
-        text="They will be signed out and can't sign in or order until you unban them."
-        confirmLabel="Ban member"
-        danger
-        busy={pending}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => act(() => banAction(u.id, true), { success: "Member banned", onOk: () => setConfirm(null) })}
-      />
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {filters}
+        <button
+          type="button"
+          onClick={() => setDueOnly((v) => !v)}
+          className={cn("inline-flex h-11 items-center gap-1 rounded-full px-4 text-sm font-semibold", dueOnly ? "bg-[#5B4CF5] text-white" : "bg-rice text-ink ring-1 ring-line")}
+        >
+          Due only
+          {dueOnly ? <X className="h-3.5 w-3.5" /> : null}
+        </button>
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="rounded-3xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-muted">No members match these filters.</p>
+      ) : (
+        <ul className="space-y-2">
+          {shown.map((u) => (
+            <UserRowLink key={u.id} u={u} />
+          ))}
+        </ul>
+      )}
+
+      <button type="button" className="btn fixed bottom-[5.5rem] left-1/2 z-30 -translate-x-1/2 rounded-full bg-[#D4FF3A] px-5 text-[#0B0B0F] shadow-lg hover:bg-[#c6f020] lg:hidden" onClick={() => setPayOpen(true)}>
+        <Wallet className="h-4 w-4" /> Add money
+      </button>
+
+      {payOpen ? <AddMoney rows={rows.filter((r) => r.accountType === "REGULAR" && !r.banned)} onClose={() => setPayOpen(false)} /> : null}
+    </div>
+  );
+}
+
+function UserRowLink({ u }: { u: UserRow }) {
+  const color = avatar(u.name, u.banned);
+  const meta = [u.employeeId ? `ID ${u.employeeId}` : null, u.officeName, u.floor ? `F${u.floor}` : null].filter(Boolean).join(" · ");
+  return (
+    <li>
+      <Link href={`/admin/users/${u.id}`} className="surface-card flex items-center gap-3 rounded-2xl px-3 py-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold" style={{ background: color.bg, color: color.fg }}>
+          {initials(u.name)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{u.name}</span>
+          <span className="block truncate text-xs text-ink-muted">{meta || "No office yet"}</span>
+        </span>
+        <BalancePill u={u} />
+        <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted lg:hidden" />
+      </Link>
     </li>
+  );
+}
+
+function BalancePill({ u }: { u: UserRow }) {
+  if (u.banned) return <span className="rounded-full bg-[#0B0B0F] px-3 py-1 text-xs font-semibold text-white">Blocked</span>;
+  if (u.balance < 0) return <span className="tnum rounded-full bg-[#FDE8E8] px-3 py-1 text-xs font-semibold text-[#E03131]">{signedTaka(u.balance)} due</span>;
+  if (u.balance > 0) return <span className="tnum rounded-full bg-[#E7F8C9] px-3 py-1 text-xs font-semibold text-[#3D6B12]">{signedTaka(u.balance)}</span>;
+  return <span className="tnum rounded-full bg-sand px-3 py-1 text-xs font-semibold text-ink-muted">৳0 Clear</span>;
+}
+
+function AddMoney({ rows, onClose }: { rows: UserRow[]; onClose: () => void }) {
+  const { act, pending } = useAct();
+  const [id, setId] = useState(rows[0]?.id ?? "");
+  const [amount, setAmount] = useState<number | "">(500);
+  const [note, setNote] = useState("Cash received");
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => rows.filter((r) => r.name.toLowerCase().includes(q.trim().toLowerCase())), [rows, q]);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Add money">
+      <form
+        className="surface-card w-full max-w-md rounded-3xl p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!id) return;
+          act(() => depositAction(id, Number(amount), note), { success: "Deposit recorded", onOk: onClose });
+        }}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Add money</h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="icon-btn">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <label className="field-label" htmlFor="pay-q">Member</label>
+        <div className="relative mb-3">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+          <input id="pay-q" className="input pl-9" placeholder="Name or employee ID" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <select className="input mb-3" value={id} onChange={(e) => setId(e.target.value)} required>
+          {filtered.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+              {r.employeeId ? ` · ${r.employeeId}` : ""}
+            </option>
+          ))}
+        </select>
+        <label className="field-label" htmlFor="pay-amt">Amount ৳</label>
+        <input id="pay-amt" type="number" min={1} required className="input mb-3" value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
+        <label className="field-label" htmlFor="pay-note">Note</label>
+        <input id="pay-note" className="input mb-4" value={note} onChange={(e) => setNote(e.target.value)} />
+        <button type="submit" className="btn w-full bg-[#D4FF3A] text-[#0B0B0F]" disabled={pending || !id}>
+          Record deposit
+        </button>
+      </form>
+    </div>
   );
 }
