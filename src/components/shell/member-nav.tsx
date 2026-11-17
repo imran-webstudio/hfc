@@ -24,7 +24,7 @@ export function MemberNav({ showAdmin }: { showAdmin: boolean }) {
             href={href}
             className={cn(
               "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition",
-              active ? "bg-leaf/15 text-leaf-deep ring-1 ring-leaf/30" : "text-ink-muted hover:bg-white/5 hover:text-ink",
+              active ? "bg-leaf/15 text-leaf-deep ring-1 ring-leaf/30" : "text-ink-muted hover:bg-ink/5 hover:text-ink",
             )}
           >
             <Icon className="h-3.5 w-3.5" />

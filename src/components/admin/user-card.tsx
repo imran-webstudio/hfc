@@ -51,7 +51,7 @@ export function UserCard({ u, offices, canAssignNone }: { u: UserRow; offices: {
               <MapPin className="h-3 w-3" />
               <select
                 aria-label={`Assign zone for ${u.name}`}
-                className="cursor-pointer appearance-auto bg-transparent text-[10.5px] font-bold outline-none [&>option]:bg-[#111916] [&>option]:text-ink"
+                className="cursor-pointer appearance-auto bg-transparent text-[10.5px] font-bold outline-none [&>option]:bg-rice [&>option]:text-ink"
                 value={u.zoneId ?? ""}
                 disabled={pending}
                 onChange={(e) => act(() => assignZoneAction(u.id, e.target.value || null), { success: "Zone updated" })}
@@ -99,7 +99,7 @@ export function UserCard({ u, offices, canAssignNone }: { u: UserRow; offices: {
 
       {depositOpen && regular ? (
         <form
-          className="mt-3 flex flex-wrap items-end gap-3 border-t border-white/5 pt-3"
+          className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3"
           onSubmit={(e) => {
             e.preventDefault();
             act(() => depositAction(u.id, Number(amount), note), {

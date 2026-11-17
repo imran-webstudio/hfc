@@ -1,41 +1,42 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { AccountFigure, SignOutButton } from "@/components/shell/account";
-import { AdminNav, AdminTitle } from "@/components/shell/admin-nav";
-import { Brand } from "@/components/shell/brand";
+import { LogOut } from "lucide-react";
+import { signOutAction } from "@/actions/auth";
+import { AccountFigure } from "@/components/shell/account";
+import { AdminPhoneBar, AdminSideNav, AdminTabBar } from "@/components/shell/admin-nav";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { requireStaff } from "@/lib/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const viewer = await requireStaff();
+  const first = (viewer.name ?? "there").split(" ")[0];
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/5 bg-[#0c1210]/90 backdrop-blur-xl md:flex">
-        <div className="border-b border-white/5 px-4 py-4">
-          <Brand href="/admin" stacked />
-          <p className="mt-1 pl-[38px] text-[11px] text-ink-muted">Admin dashboard</p>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          <AdminNav showStaff={viewer.isSuperAdmin} />
-        </div>
-        <div className="border-t border-white/5 p-4">
-          <AccountFigure userId={viewer.id} name={viewer.name ?? "Admin"} align="left" />
-          <div className="mt-2">
-            <SignOutButton />
+    <div className="min-h-screen lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-sidebar px-3 py-5 lg:flex">
+        <Link href="/admin" className="mb-6 px-3">
+          <span className="block text-lg font-semibold tracking-tight">HFC</span>
+          <span className="block text-[11px] font-medium text-ink-muted">Home Flavour Catering</span>
+        </Link>
+        <AdminSideNav showTeam={viewer.isSuperAdmin} />
+        <div className="mt-auto space-y-3 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <AccountFigure userId={viewer.id} name={viewer.name ?? "Admin"} align="left" />
+            <form action={signOutAction}>
+              <button type="submit" aria-label="Sign out" className="icon-btn">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
           </div>
+          <Link href="/app" className="block px-2 text-xs font-medium text-ink-muted hover:text-ink">
+            Ordering app
+          </Link>
+          <ThemeToggle labeled />
         </div>
       </aside>
-      <div className="md:pl-64">
-        <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-white/5 bg-cream/70 px-5 text-xs font-bold backdrop-blur-xl">
-          <AdminTitle />
-          <Link href="/app" className="flex items-center gap-1 text-[11px] font-medium text-ink-muted hover:text-ink">
-            <ArrowLeft className="h-3 w-3" /> Back to app
-          </Link>
-        </div>
-        <div className="flex gap-1 overflow-x-auto border-b border-white/5 px-3 py-2 md:hidden">
-          <AdminNav showStaff={viewer.isSuperAdmin} horizontal />
-        </div>
-        <main className="mx-auto max-w-6xl px-4 pb-40 pt-8 md:px-6">{children}</main>
+      <div className="min-w-0 flex-1">
+        <AdminPhoneBar firstName={first} />
+        <main className="px-4 pb-28 pt-1 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
       </div>
+      <AdminTabBar />
     </div>
   );
 }

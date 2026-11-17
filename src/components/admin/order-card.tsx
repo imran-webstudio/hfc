@@ -62,7 +62,7 @@ export function OrderCard({ o }: { o: BoardOrder }) {
       </div>
 
       {o.status === "PENDING" || needsCash ? (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
           {o.status === "PENDING" ? (
             <>
               <button className="btn btn-leaf btn-sm" disabled={pending} onClick={() => act(() => markDeliveredAction(o.id), { success: o.accountType === "REGULAR" ? "Delivered — wallet charged" : "Delivered" })}>

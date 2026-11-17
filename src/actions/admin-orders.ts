@@ -63,6 +63,9 @@ export async function mealsForDateAction(officeId: string, date: string) {
     const scope = officeScope(viewer);
     if (scope && !scope.includes(officeId)) throw new UserError("You can't place orders for that location.");
     const opts = await optionsForDate(officeId, date);
-    return opts.map((o) => ({ id: o.id, label: `${o.slot === "LUNCH" ? "Lunch" : "Dinner"} · ${o.title} — ৳${o.price}` }));
+    return opts.map((o) => {
+      const left = o.remaining == null ? "" : o.remaining === 0 ? " · 0 left" : ` · ${o.remaining} left`;
+      return { id: o.id, label: `${o.slot === "LUNCH" ? "Lunch" : "Dinner"} · ${o.title} — ৳${o.price}${left}` };
+    });
   });
 }

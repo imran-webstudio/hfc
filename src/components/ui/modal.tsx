@@ -49,7 +49,7 @@ export function Modal({ open, onClose, title, subtitle, variant = "panel", close
             {subtitle ? <p className="mt-1 text-sm text-ink-muted">{subtitle}</p> : null}
           </>
         ) : (
-          <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+          <div className="mb-4 flex items-start justify-between gap-4 border-b border-line pb-3">
             <div>
               <h2 className="font-display text-lg font-bold">{title}</h2>
               {subtitle ? <p className="text-[11px] text-ink-muted">{subtitle}</p> : null}

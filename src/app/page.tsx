@@ -1,20 +1,48 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
-import { LogIn, FlaskConical } from "lucide-react";
 import { auth } from "@/auth";
-import { signInAsDev, signInWithGoogle, signOutAction } from "@/actions/auth";
+import { signInWithGoogle, signOutAction } from "@/actions/auth";
+import { DevSignIn } from "@/components/auth/dev-sign-in";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { config } from "@/lib/config";
 import { getViewer } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-
-const HERO =
-  "linear-gradient(125deg, rgba(15,23,20,0.78) 0%, rgba(11,122,106,0.55) 55%, rgba(15,23,20,0.65) 100%), url('https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=2000&q=80')";
 
 const MESSAGES: Record<string, string> = {
   signin: "That account couldn't be signed in.",
   google: "Google sign-in isn't configured on this server.",
   AccessDenied: "This account has been suspended. Please contact your office admin.",
 };
+
+type DevUser = {
+  email: string | null;
+  name: string | null;
+  role: string;
+  accountType: string;
+  managedOffices: { officeId: string }[];
+};
+
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" className="h-6 w-6 shrink-0" aria-hidden>
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
+
+function devLabel(u: DevUser) {
+  const kind =
+    u.role === "SUPER_ADMIN"
+      ? "SUPER_ADMIN"
+      : u.managedOffices.length
+        ? "Manager"
+        : u.accountType === "REGULAR"
+          ? "Member (Regular)"
+          : "Member (One-time)";
+  return `${u.name} — ${kind}`;
+}
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
@@ -32,78 +60,79 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       })
     : [];
 
+  const devOptions = devUsers.flatMap((u) => (u.email ? [{ email: u.email, label: devLabel(u) }] : []));
+
+  const message = suspended
+    ? MESSAGES.AccessDenied
+    : error
+      ? (MESSAGES[error] ?? "Sign-in failed. Please try again.")
+      : null;
+
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: HERO }} />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,107,44,0.22),transparent_40%)]" />
-      <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col justify-end px-6 pb-16 pt-24 text-white md:pb-24">
-        <div className="mb-6">
-          <Image
-            src="/logo.png"
-            alt={config.brand}
-            width={128}
-            height={128}
-            priority
-            className="h-28 w-28 rounded-full object-contain shadow-[0_12px_40px_rgba(0,0,0,0.35)] md:h-32 md:w-32"
-          />
-        </div>
-        <p className="font-display text-5xl font-extrabold tracking-tight md:text-7xl">{config.brand}</p>
-        <h1 className="mt-4 max-w-lg text-xl font-medium text-white/90 md:text-2xl">
-          Office lunch, one tap. Biryani, polao, bhat — ordered before cutoff, delivered to your desk.
-        </h1>
-        <p className="mt-3 max-w-md text-sm text-white/70">
-          Cash on delivery or wallet deposit. No payment gateway — just today&apos;s set meal.
-        </p>
+    <main className="relative flex min-h-dvh flex-col">
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-20 h-80 w-80 rounded-full bg-[#5B4CF5]/35 blur-3xl dark:bg-[#5B4CF5]/25 lg:hidden" />
+      <div aria-hidden className="pointer-events-none absolute -left-24 top-[38%] h-72 w-72 rounded-full bg-[#D4FF3A]/50 blur-3xl dark:bg-[#D4FF3A]/15 lg:hidden" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-16 right-[-10%] h-64 w-64 rounded-full bg-[#14b8a6]/30 blur-3xl dark:bg-[#14b8a6]/15 lg:hidden" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-[-8%] top-[18%] hidden h-[26rem] w-[26rem] rounded-full bg-[#5B4CF5]/30 blur-[110px] dark:bg-[#5B4CF5]/35 lg:block"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[6%] left-[12%] hidden h-[22rem] w-[22rem] rounded-full bg-[#D4FF3A]/35 blur-[110px] dark:bg-[#C6F020]/20 lg:block"
+      />
 
-        {error || suspended ? (
-          <p className="mt-5 max-w-md rounded-xl border border-red-400/40 bg-red-500/15 px-4 py-2.5 text-sm text-red-200">
-            {suspended ? MESSAGES.AccessDenied : (MESSAGES[error ?? ""] ?? "Sign-in failed. Please try again.")}
-          </p>
-        ) : null}
+      <header className="relative flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-7">
+        <p className="text-[1.65rem] font-bold tracking-tight text-ink">hfc</p>
+        <ThemeToggle />
+      </header>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 sm:px-10 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,26rem)] lg:items-center lg:gap-20 lg:px-16">
+        <section className="pt-14 lg:pt-0">
+          <div className="lg:hidden">
+            <h1 className="text-[2.65rem] font-bold leading-[1.05] tracking-tight text-ink">Welcome back</h1>
+            <p className="mt-3 text-lg text-ink-muted">Sign in to order your meals</p>
+          </div>
+          <div className="hidden max-w-xl lg:block">
+            <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight text-ink xl:text-[3.4rem]">
+              Lunch and dinner, sorted.
+            </h1>
+            <p className="mt-5 max-w-md text-lg text-ink-muted">Order before the cutoff. We handle the rest.</p>
+          </div>
+        </section>
+
+        <section className="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:justify-self-end lg:rounded-[1.75rem] lg:border lg:border-line lg:bg-rice lg:px-8 lg:py-9 lg:shadow-[var(--hfc-card-shadow)]">
+          <div className="mb-6 hidden lg:block">
+            <h2 className="text-[1.65rem] font-semibold tracking-tight text-ink">Sign in</h2>
+            <p className="mt-1.5 text-[15px] text-ink-muted">Welcome back to hfc</p>
+          </div>
+
+          {message ? (
+            <p role="alert" className="mb-5 rounded-2xl border border-[#e03131]/30 bg-[#e03131]/10 px-4 py-3 text-sm leading-relaxed text-[#c92a2a] dark:text-[#ffb4b4]">
+              {message}
+            </p>
+          ) : null}
+
           {suspended ? (
             <form action={signOutAction}>
-              <button type="submit" className="btn btn-ghost px-6 py-3.5 text-sm">
+              <button type="submit" className="btn btn-primary w-full">
                 Sign out
               </button>
             </form>
           ) : (
             <form action={signInWithGoogle}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-2xl bg-spice px-6 py-3.5 text-sm font-bold text-white shadow-[0_12px_30px_rgba(255,122,69,0.4)] transition hover:bg-spice-deep active:scale-[0.98]"
-              >
-                <LogIn className="h-4 w-4" strokeWidth={2.25} />
+              <button type="submit" className="btn-google">
+                <GoogleMark />
                 Continue with Google
               </button>
             </form>
           )}
-        </div>
 
-        {config.devLoginEnabled && !suspended ? (
-          <form action={signInAsDev} className="mt-8 max-w-md rounded-2xl border border-white/15 bg-black/40 p-4 backdrop-blur">
-            <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">
-              <FlaskConical className="h-3.5 w-3.5" /> Dev sign-in (ENABLE_DEV_LOGIN)
-            </p>
-            <label htmlFor="dev-email" className="field-label">
-              Sign in as
-            </label>
-            <div className="flex gap-2">
-              <select id="dev-email" name="email" className="input" defaultValue={devUsers[0]?.email ?? ""}>
-                {devUsers.map((u) => (
-                  <option key={u.email} value={u.email ?? ""}>
-                    {u.name} — {u.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : u.managedOffices.length ? "Manager" : u.accountType === "REGULAR" ? "Member (Regular)" : "Member (One-time)"}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className="btn btn-leaf">
-                Sign in
-              </button>
-            </div>
-          </form>
-        ) : null}
+          {config.devLoginEnabled && !suspended && devOptions.length > 0 ? <DevSignIn users={devOptions} /> : null}
+        </section>
       </div>
+
+      <p className="relative px-6 pb-8 text-center text-[15px] text-ink-muted lg:hidden">New here? Ask your office admin for access</p>
     </main>
   );
 }

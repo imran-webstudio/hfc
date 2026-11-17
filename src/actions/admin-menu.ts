@@ -9,6 +9,7 @@ import { listOffices, setCutoffs, setOfferDinner } from "@/server/offices";
 import {
   addDatedOption,
   addWeeklyOption,
+  fanOutOfficeIds,
   keepSavedMeal,
   removeOption,
   setSavedMealArchived,
@@ -50,40 +51,42 @@ export type OptionPayload = {
   description: string;
   price: number;
   imageUrl: string | null;
+  maxQuantity: number | null;
 };
 
-export async function addWeeklyOptionAction(office: string, weekday: number, payload: OptionPayload, keep: boolean) {
+/** Menus are identical at every active office the viewer manages. `office` is ignored. */
+export async function addWeeklyOptionAction(_office: string, weekday: number, payload: OptionPayload, keep = false) {
   return run(async () => {
     const viewer = await assertStaff();
     const input: OptionInput = payload;
-    await addWeeklyOption(await targetOffices(viewer, office), weekday, input);
+    await addWeeklyOption(await fanOutOfficeIds(officeScope(viewer)), weekday, input);
     if (keep) await keepSavedMeal(input);
     refresh();
   });
 }
 
-export async function addDatedOptionAction(office: string, date: string, payload: OptionPayload, keep: boolean) {
+export async function addDatedOptionAction(_office: string, date: string, payload: OptionPayload, keep = false) {
   return run(async () => {
     const viewer = await assertStaff();
     if (!isDateStr(date)) throw new UserError("Pick a valid date.");
-    await addDatedOption(await targetOffices(viewer, office), date, payload);
+    await addDatedOption(await fanOutOfficeIds(officeScope(viewer)), date, payload);
     if (keep) await keepSavedMeal(payload);
     refresh();
   });
 }
 
-export async function updateOptionAction(optionId: string, office: string, payload: OptionPayload) {
+export async function updateOptionAction(optionId: string, payload: OptionPayload) {
   return run(async () => {
     const viewer = await assertStaff();
-    await updateOption(optionId, payload, office === "all", officeScope(viewer));
+    await updateOption(optionId, payload, officeScope(viewer));
     refresh();
   });
 }
 
-export async function removeOptionAction(optionId: string, office: string) {
+export async function removeOptionAction(optionId: string) {
   return run(async () => {
     const viewer = await assertStaff();
-    await removeOption(optionId, office === "all", officeScope(viewer));
+    await removeOption(optionId, officeScope(viewer));
     refresh();
   });
 }

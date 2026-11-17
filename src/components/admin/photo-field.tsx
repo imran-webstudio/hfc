@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 
 /** Optional meal photo: click or drop an image → /api/upload → URL. */
 export function PhotoField({ value, onChange }: { value: string | null; onChange: (url: string | null) => void }) {
@@ -33,15 +33,13 @@ export function PhotoField({ value, onChange }: { value: string | null; onChange
     <div>
       <span className="field-label">Meal photo</span>
       {value ? (
-        <div className="relative inline-block">
-          <Image src={value} alt="Meal preview" width={160} height={112} unoptimized className="h-28 w-40 rounded-xl border border-line object-cover" />
-          <button
-            type="button"
-            aria-label="Remove photo"
-            onClick={() => onChange(null)}
-            className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-red-600 text-white"
-          >
-            <X className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-3">
+          <Image src={value} alt="Meal preview" width={96} height={96} unoptimized className="h-16 w-16 rounded-xl border border-line object-cover" />
+          <button type="button" className="btn btn-ghost" onClick={() => inputRef.current?.click()} disabled={busy}>
+            <Upload className="h-4 w-4" /> {busy ? "Uploading…" : "Change photo"}
+          </button>
+          <button type="button" className="btn btn-text text-sm text-[#E03131]" onClick={() => onChange(null)}>
+            Remove
           </button>
         </div>
       ) : (
@@ -58,11 +56,13 @@ export function PhotoField({ value, onChange }: { value: string | null; onChange
             setDrag(false);
             void upload(e.dataTransfer.files[0]);
           }}
-          className={`grid h-32 w-full place-items-center rounded-xl border border-dashed text-center transition ${drag ? "border-leaf bg-leaf/10" : "border-line bg-white/[0.02] hover:bg-white/5"}`}
+          className={`grid h-32 w-full place-items-center rounded-2xl border border-dashed text-center transition ${drag ? "border-[#5B4CF5] bg-[#5B4CF5]/10" : "border-line bg-sand hover:bg-ink/5"}`}
         >
           <span>
-            <span className="block text-sm font-bold">{busy ? "Uploading…" : "Click or drop an image"}</span>
-            <span className="mt-1 block text-[11px] text-ink-muted">JPG, PNG, WebP · up to 4.5MB · uploaded to Cloudinary</span>
+            <Camera className="mx-auto mb-1 h-6 w-6 text-ink-muted lg:hidden" />
+            <Upload className="mx-auto mb-1 hidden h-5 w-5 text-ink-muted lg:block" />
+            <span className="block text-sm font-medium lg:hidden">{busy ? "Uploading…" : "Tap to add photo"}</span>
+            <span className="hidden text-sm font-medium lg:block">{busy ? "Uploading…" : "Drop a photo or click to upload"}</span>
           </span>
         </button>
       )}

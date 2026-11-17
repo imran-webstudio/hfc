@@ -4,6 +4,7 @@ import { UserError } from "@/lib/action";
 import { config } from "@/lib/config";
 import { addDays, cutoffPassed, isDateStr, todayStr } from "@/lib/time";
 import { canManageOffice, type Viewer } from "@/lib/session";
+import { assertPortionCap } from "@/server/menu";
 import { applyLedger } from "@/server/wallet";
 
 export const slotCutoff = (office: Pick<Office, "lunchCutoff" | "dinnerCutoff">, slot: Slot) =>
@@ -62,11 +63,6 @@ export async function placeMemberOrder(viewer: Viewer, input: { optionId: string
   const state = slotState(option.office, input.date, option.slot, await isDayOff(option.officeId, input.date));
   if (!state.open) throw new UserError(state.reason ?? "Ordering is closed.");
 
-  const dup = await prisma.order.findFirst({
-    where: { userId: viewer.id, mealDate: input.date, slot: option.slot, status: { not: "CANCELLED" } },
-  });
-  if (dup) throw new UserError(`You already have a ${option.slot.toLowerCase()} order for this day. Cancel it to change.`);
-
   const amount = option.price * input.quantity;
   if (viewer.accountType === "REGULAR") {
     const pending = await prisma.order.aggregate({
@@ -79,18 +75,25 @@ export async function placeMemberOrder(viewer: Viewer, input: { optionId: string
     }
   }
 
-  return prisma.order.create({
-    data: {
-      userId: viewer.id,
-      officeId: option.officeId,
-      optionId: option.id,
-      slot: option.slot,
-      mealDate: input.date,
-      title: option.title,
-      unitPrice: option.price,
-      quantity: input.quantity,
-      amount,
-    },
+  return prisma.$transaction(async (tx) => {
+    const dup = await tx.order.findFirst({
+      where: { userId: viewer.id, mealDate: input.date, slot: option.slot, status: { not: "CANCELLED" } },
+    });
+    if (dup) throw new UserError(`You already have a ${option.slot.toLowerCase()} order for this day. Cancel it to change.`);
+    await assertPortionCap(tx, option, input.date, input.quantity);
+    return tx.order.create({
+      data: {
+        userId: viewer.id,
+        officeId: option.officeId,
+        optionId: option.id,
+        slot: option.slot,
+        mealDate: input.date,
+        title: option.title,
+        unitPrice: option.price,
+        quantity: input.quantity,
+        amount,
+      },
+    });
   });
 }
 
@@ -107,20 +110,23 @@ export async function placeAdminOrder(
   const option = await loadOption(input.optionId, input.date);
   if (!canManageOffice(actor, option.officeId)) throw new UserError("You can't place orders for that location.");
 
-  return prisma.order.create({
-    data: {
-      userId: member.id,
-      officeId: option.officeId,
-      optionId: option.id,
-      slot: option.slot,
-      mealDate: input.date,
-      title: option.title,
-      unitPrice: option.price,
-      quantity: input.quantity,
-      amount: option.price * input.quantity,
-      note: input.note?.trim() || "Phone order",
-      placedById: actor.id,
-    },
+  return prisma.$transaction(async (tx) => {
+    await assertPortionCap(tx, option, input.date, input.quantity);
+    return tx.order.create({
+      data: {
+        userId: member.id,
+        officeId: option.officeId,
+        optionId: option.id,
+        slot: option.slot,
+        mealDate: input.date,
+        title: option.title,
+        unitPrice: option.price,
+        quantity: input.quantity,
+        amount: option.price * input.quantity,
+        note: input.note?.trim() || "Phone order",
+        placedById: actor.id,
+      },
+    });
   });
 }
 

@@ -60,7 +60,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             <p className="text-xs text-ink-muted">Have a good meal! 😊</p>
           </div>
         </div>
-        <div className="flex max-w-xs items-start gap-2.5 border-l border-white/5 pl-5">
+        <div className="flex max-w-xs items-start gap-2.5 border-l border-line pl-5">
           <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf" />
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-leaf">Your zone</p>
@@ -118,7 +118,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                 key={`${date}-${slot}`}
                 slot={slot}
                 date={date}
-                items={items.map((o) => ({ id: o.id, title: o.title, description: o.description, price: o.price, imageUrl: o.imageUrl }))}
+                items={items.map((o) => ({
+                  id: o.id,
+                  title: o.title,
+                  description: o.description,
+                  price: o.price,
+                  imageUrl: o.imageUrl,
+                  remaining: o.remaining,
+                }))}
                 open={state.open}
                 reason={"reason" in state ? state.reason : undefined}
                 cutoff={slot === "LUNCH" ? zone.lunchCutoff : zone.dinnerCutoff}
