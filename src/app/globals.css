@@ -316,40 +316,39 @@ html.dark .blob-c {
     border-radius: 0.75rem;
   }
 
-  /* Google Identity branding: white / #131314 fill, grey stroke, unaltered four-colour G. */
+  /* White in both themes, matching the approved sign-in mockups. The G stays four-colour. */
   .btn-google {
     display: flex;
     width: 100%;
-    min-height: 3.25rem;
+    min-height: 3.75rem;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    border-radius: 0.875rem;
-    border: 1px solid #747775;
+    border-radius: 9999px;
+    border: 1px solid #e4e4e0;
     background: #ffffff;
-    color: #1f1f1f;
-    padding: 0.85rem 1.25rem;
-    font-size: 1rem;
-    font-weight: 500;
-    letter-spacing: 0.01em;
+    color: #0b0b0f;
+    padding: 0.9rem 1.25rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(11, 11, 15, 0.04);
     transition: background-color 0.15s, box-shadow 0.15s;
   }
   .btn-google:hover {
-    background: #f2f2f2;
-    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.18);
+    background: #f7f7f5;
+    box-shadow: 0 2px 8px rgba(11, 11, 15, 0.08);
   }
   .btn-google:focus-visible {
     outline: 2px solid #4285f4;
     outline-offset: 2px;
   }
-  html.dark .btn-google {
-    border-color: #8e918f;
-    background: #131314;
-    color: #e3e3e3;
-  }
+  html.dark .btn-google,
   html.dark .btn-google:hover {
-    background: #1f1f1f;
+    border-color: #ffffff;
+    background: #ffffff;
+    color: #0b0b0f;
   }
 
   .icon-btn {

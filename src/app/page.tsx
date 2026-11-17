@@ -1,8 +1,7 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
-import { FlaskConical } from "lucide-react";
 import { auth } from "@/auth";
-import { signInAsDev, signInWithGoogle, signOutAction } from "@/actions/auth";
+import { signInWithGoogle, signOutAction } from "@/actions/auth";
+import { DevSignIn } from "@/components/auth/dev-sign-in";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { config } from "@/lib/config";
 import { getViewer } from "@/lib/session";
@@ -61,6 +60,8 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       })
     : [];
 
+  const devOptions = devUsers.flatMap((u) => (u.email ? [{ email: u.email, label: devLabel(u) }] : []));
+
   const message = suspended
     ? MESSAGES.AccessDenied
     : error
@@ -69,107 +70,69 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="relative flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8 sm:pt-6">
-        <p className="text-sm font-semibold tracking-tight text-ink lg:hidden">HFC</p>
-        <div className="ml-auto">
-          <ThemeToggle />
-        </div>
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-20 h-80 w-80 rounded-full bg-[#5B4CF5]/35 blur-3xl dark:bg-[#5B4CF5]/25 lg:hidden" />
+      <div aria-hidden className="pointer-events-none absolute -left-24 top-[38%] h-72 w-72 rounded-full bg-[#D4FF3A]/50 blur-3xl dark:bg-[#D4FF3A]/15 lg:hidden" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-16 right-[-10%] h-64 w-64 rounded-full bg-[#14b8a6]/30 blur-3xl dark:bg-[#14b8a6]/15 lg:hidden" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-[-8%] top-[18%] hidden h-[26rem] w-[26rem] rounded-full bg-[#5B4CF5]/30 blur-[110px] dark:bg-[#5B4CF5]/35 lg:block"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-[6%] left-[12%] hidden h-[22rem] w-[22rem] rounded-full bg-[#D4FF3A]/35 blur-[110px] dark:bg-[#C6F020]/20 lg:block"
+      />
+
+      <header className="relative flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-7">
+        <p className="text-[1.65rem] font-bold tracking-tight text-ink">hfc</p>
+        <ThemeToggle />
       </header>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 items-center px-4 py-6 sm:px-8 sm:py-10">
-        <div className="grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,26rem)] lg:gap-20">
-          <section className="max-w-xl">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo.png"
-                alt=""
-                width={64}
-                height={64}
-                priority
-                className="h-14 w-14 rounded-2xl bg-white object-contain p-1 shadow-[0_8px_24px_rgba(11,11,15,0.08)] ring-1 ring-black/5"
-              />
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#5B4CF5] dark:text-[#D4FF3A]">HFC</p>
-                <p className="text-sm font-medium text-ink-muted">{config.brand}</p>
-              </div>
-            </div>
-            <h1 className="mt-6 text-[2rem] font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-[3.25rem]">
-              Office lunch, one tap.
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 sm:px-10 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,26rem)] lg:items-center lg:gap-20 lg:px-16">
+        <section className="pt-14 lg:pt-0">
+          <div className="lg:hidden">
+            <h1 className="text-[2.65rem] font-bold leading-[1.05] tracking-tight text-ink">Welcome back</h1>
+            <p className="mt-3 text-lg text-ink-muted">Sign in to order your meals</p>
+          </div>
+          <div className="hidden max-w-xl lg:block">
+            <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight text-ink xl:text-[3.4rem]">
+              Lunch and dinner, sorted.
             </h1>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-ink-muted sm:text-lg">
-              Biryani, polao, bhat — ordered before cutoff, delivered to your desk.
+            <p className="mt-5 max-w-md text-lg text-ink-muted">Order before the cutoff. We handle the rest.</p>
+          </div>
+        </section>
+
+        <section className="flex flex-1 flex-col justify-center py-10 lg:flex-none lg:justify-self-end lg:rounded-[1.75rem] lg:border lg:border-line lg:bg-rice lg:px-8 lg:py-9 lg:shadow-[var(--hfc-card-shadow)]">
+          <div className="mb-6 hidden lg:block">
+            <h2 className="text-[1.65rem] font-semibold tracking-tight text-ink">Sign in</h2>
+            <p className="mt-1.5 text-[15px] text-ink-muted">Welcome back to hfc</p>
+          </div>
+
+          {message ? (
+            <p role="alert" className="mb-5 rounded-2xl border border-[#e03131]/30 bg-[#e03131]/10 px-4 py-3 text-sm leading-relaxed text-[#c92a2a] dark:text-[#ffb4b4]">
+              {message}
             </p>
-            <ul className="mt-6 hidden max-w-md gap-2.5 text-sm text-ink sm:grid">
-              <li className="flex items-center gap-2.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#5B4CF5]" />
-                Cash on delivery or wallet deposit
-              </li>
-              <li className="flex items-center gap-2.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#D4FF3A] ring-1 ring-black/10" />
-                No payment gateway — just today&apos;s set meal
-              </li>
-              <li className="flex items-center gap-2.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#0F9B8E]" />
-                Lunch and dinner cutoffs, per office
-              </li>
-            </ul>
-          </section>
+          ) : null}
 
-          <section className="surface-card w-full justify-self-center rounded-[1.75rem] p-6 sm:p-8 lg:justify-self-end">
-            <h2 className="text-xl font-semibold tracking-tight text-ink">{suspended ? "Account suspended" : "Sign in"}</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-              {suspended ? "This office account can’t place orders until an admin restores it." : "Use the Google account your office already knows."}
-            </p>
+          {suspended ? (
+            <form action={signOutAction}>
+              <button type="submit" className="btn btn-primary w-full">
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <form action={signInWithGoogle}>
+              <button type="submit" className="btn-google">
+                <GoogleMark />
+                Continue with Google
+              </button>
+            </form>
+          )}
 
-            {message ? (
-              <p role="alert" className="mt-5 rounded-2xl border border-[#e03131]/30 bg-[#e03131]/10 px-4 py-3 text-sm leading-relaxed text-[#c92a2a] dark:text-[#ffb4b4]">
-                {message}
-              </p>
-            ) : null}
-
-            {suspended ? (
-              <form action={signOutAction} className="mt-6">
-                <button type="submit" className="btn btn-primary w-full">
-                  Sign out
-                </button>
-              </form>
-            ) : (
-              <form action={signInWithGoogle} className="mt-6">
-                <button type="submit" className="btn-google">
-                  <GoogleMark />
-                  Continue with Google
-                </button>
-              </form>
-            )}
-
-            {config.devLoginEnabled && !suspended ? (
-              <form action={signInAsDev} className="mt-5">
-                <div className="mb-4 flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                  <span className="h-px flex-1 bg-line" />
-                  or
-                  <span className="h-px flex-1 bg-line" />
-                </div>
-                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
-                  <FlaskConical className="h-3 w-3" /> Dev sign-in
-                </p>
-                <label htmlFor="dev-email" className="field-label text-xs font-medium text-ink-muted">
-                  Sign in as
-                </label>
-                <select id="dev-email" name="email" className="input text-xs" defaultValue={devUsers[0]?.email ?? ""}>
-                  {devUsers.map((u) => (
-                    <option key={u.email} value={u.email ?? ""}>
-                      {devLabel(u)}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit" className="btn btn-ghost btn-sm mt-2 w-full">
-                  Sign in
-                </button>
-              </form>
-            ) : null}
-          </section>
-        </div>
+          {config.devLoginEnabled && !suspended && devOptions.length > 0 ? <DevSignIn users={devOptions} /> : null}
+        </section>
       </div>
+
+      <p className="relative px-6 pb-8 text-center text-[15px] text-ink-muted lg:hidden">New here? Ask your office admin for access</p>
     </main>
   );
 }
