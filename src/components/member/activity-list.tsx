@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowDownLeft, Receipt } from "lucide-react";
 import { Chip, EmptyNote } from "@/components/ui/ui";
 import { cn } from "@/lib/cn";
+import { statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
 import { fmtDateTime, fmtDay } from "@/lib/time";
 import type { ActivityItem } from "@/server/summary";
@@ -61,7 +62,7 @@ export function ActivityList({ items, heading }: { items: ActivityItem[]; headin
                     {it.quantity > 1 ? <span className="text-ink-muted"> × {it.quantity}</span> : null}
                   </p>
                   <p className="text-[11px] text-ink-muted">
-                    {it.slot} · {it.office} · meal day {fmtDay(it.mealDate)}
+                    {statusLabel(it.slot)} · {it.office} · meal day {fmtDay(it.mealDate)}
                   </p>
                   <p className="text-[10.5px] text-ink-muted/80">
                     Ordered {fmtDateTime(it.at)}
@@ -73,8 +74,8 @@ export function ActivityList({ items, heading }: { items: ActivityItem[]; headin
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   <p className="tnum text-sm font-bold">{taka(it.amount)}</p>
                   <div className="flex flex-wrap justify-end gap-1">
-                    <Chip tone={statusTone(it.status)}>{it.status}</Chip>
-                    <Chip tone={statusTone(it.paymentStatus)}>{it.paymentStatus}</Chip>
+                    <Chip tone={statusTone(it.status)}>{statusLabel(it.status)}</Chip>
+                    <Chip tone={statusTone(it.paymentStatus)}>{statusLabel(it.paymentStatus)}</Chip>
                   </div>
                 </div>
               </li>
