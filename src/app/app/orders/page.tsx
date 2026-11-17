@@ -1,7 +1,5 @@
-import { History } from "lucide-react";
 import { ActivityList } from "@/components/member/activity-list";
 import { StatsGrid } from "@/components/member/stats-grid";
-import { PageTitle } from "@/components/ui/ui";
 import { requireViewer } from "@/lib/session";
 import { getMemberSummary } from "@/server/summary";
 
@@ -12,9 +10,8 @@ export default async function HistoryPage() {
   const summary = await getMemberSummary(viewer.id);
   return (
     <div>
-      <PageTitle icon={<History className="h-5 w-5" />} title="Your history">
-        Your orders, deliveries, deposits and wallet charges.
-      </PageTitle>
+      <h1 className="mb-2 text-3xl font-semibold tracking-tight">My orders</h1>
+      <p className="mb-5 text-sm text-ink-muted">Your orders, deliveries, deposits and wallet charges. A negative balance is allowed.</p>
       <StatsGrid s={summary} />
       <ActivityList items={summary.activity} heading="All activity" />
     </div>

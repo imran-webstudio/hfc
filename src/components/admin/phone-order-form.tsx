@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Phone, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { mealsForDateAction, placeOrderForMemberAction, searchMembersAction } from "@/actions/admin-orders";
+import { Modal } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 import { addDays } from "@/lib/time";
 
@@ -12,21 +13,14 @@ type Meal = { id: string; label: string };
 export function PhoneOrderSection({ offices, today, maxDays }: { offices: { id: string; name: string }[]; today: string; maxDays: number }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <Phone className="mt-0.5 h-3.5 w-3.5 text-leaf" />
-          <div>
-            <p className="text-sm font-bold">Order for member</p>
-            <p className="text-[10px] text-ink-muted">Place a phone order under a member&apos;s account.</p>
-          </div>
-        </div>
-        <button className="btn btn-leaf gap-1.5" onClick={() => setOpen((o) => !o)}>
-          <Plus className="h-3.5 w-3.5" /> Order for member
-        </button>
-      </div>
-      {open ? <PhoneOrderForm offices={offices} today={today} maxDays={maxDays} onClose={() => setOpen(false)} /> : null}
-    </div>
+    <>
+      <button type="button" className="btn bg-[#5B4CF5] text-white hover:bg-[#4636e0] max-lg:fixed max-lg:bottom-[5.75rem] max-lg:left-1/2 max-lg:z-30 max-lg:-translate-x-1/2 max-lg:rounded-full max-lg:px-5 max-lg:shadow-lg" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4" /> Order for member
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title="Order for member" subtitle="Place a phone order under a member's account. Cutoff is skipped for admins.">
+        <PhoneOrderForm offices={offices} today={today} maxDays={maxDays} onClose={() => setOpen(false)} />
+      </Modal>
+    </>
   );
 }
 
@@ -69,7 +63,6 @@ function PhoneOrderForm({ offices, today, maxDays, onClose }: { offices: { id: s
 
   return (
     <form
-      className="surface-card mt-4 rounded-2xl p-5"
       onSubmit={(e) => {
         e.preventDefault();
         if (!member) return;
@@ -79,13 +72,6 @@ function PhoneOrderForm({ offices, today, maxDays, onClose }: { offices: { id: s
         });
       }}
     >
-      <p className="flex items-center gap-2 text-sm font-bold">
-        <Phone className="h-3.5 w-3.5 text-leaf" /> Order for member
-      </p>
-      <p className="mb-4 mt-1 text-[11px] text-ink-muted">
-        Record a meal under a member&apos;s account (e.g. after a phone call). Pick any upcoming day — weekday templates load automatically. Orders stay unpaid
-        until settled after delivery. Cutoff is skipped for admins.
-      </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="field-label" htmlFor="po-office">Office</label>

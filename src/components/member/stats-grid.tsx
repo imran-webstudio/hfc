@@ -24,13 +24,13 @@ export function StatsGrid({ s }: { s: MemberSummary }) {
           {s.cancelled > 0 ? <span className="text-xs text-ink-muted">({s.cancelled} cancelled)</span> : null}
         </MiniStat>
         <MiniStat label="Total meal spend">
-          <b className="font-display text-lg">{taka(s.mealSpend)}</b>
+          <b className="tnum text-lg">{taka(s.mealSpend)}</b>
         </MiniStat>
         <MiniStat label="Deposits received">
-          <b className="font-display text-lg text-leaf-deep">{taka(s.depositsReceived)}</b>
+          <b className="tnum text-lg text-leaf-deep">{taka(s.depositsReceived)}</b>
         </MiniStat>
         <MiniStat label="Due payments">
-          <b className="font-display text-lg">{taka(s.duePayments)}</b>
+          <b className="tnum text-lg">{taka(s.duePayments)}</b>
         </MiniStat>
       </div>
     </div>

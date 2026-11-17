@@ -1,6 +1,4 @@
-import { User } from "lucide-react";
 import { ProfileForm } from "@/components/member/profile-form";
-import { PageTitle } from "@/components/ui/ui";
 import { requireViewer } from "@/lib/session";
 import { listOffices } from "@/server/offices";
 
@@ -11,9 +9,8 @@ export default async function ProfilePage() {
   const offices = await listOffices({ activeOnly: true });
   return (
     <div className="mx-auto max-w-lg">
-      <PageTitle icon={<User className="h-5 w-5" />} title="Your profile">
-        Update desk, building, floor, office address, or phone. Your catering zone follows the office you select (admins can still change it).
-      </PageTitle>
+      <h1 className="mb-2 text-3xl font-semibold tracking-tight">Profile</h1>
+      <p className="mb-5 text-sm text-ink-muted">Update your desk, floor, and phone. Your catering zone follows the office you select.</p>
       <ProfileForm
         offices={offices.map((o) => ({ id: o.id, name: o.name }))}
         zoneName={viewer.zone?.name ?? null}

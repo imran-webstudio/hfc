@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -13,32 +13,38 @@ export function applyTheme(mode: "light" | "dark") {
   root.style.colorScheme = mode;
 }
 
+function subscribe(onStoreChange: () => void) {
+  const obs = new MutationObserver(onStoreChange);
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => {
+    if (localStorage.getItem(KEY)) return;
+    applyTheme(mq.matches ? "dark" : "light");
+    onStoreChange();
+  };
+  mq.addEventListener("change", onChange);
+  return () => {
+    obs.disconnect();
+    mq.removeEventListener("change", onChange);
+  };
+}
+
+function snapshot(): "light" | "dark" {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
 export function ThemeToggle({ labeled = false }: { labeled?: boolean }) {
-  const [mode, setMode] = useState<"light" | "dark">("light");
+  const mode = useSyncExternalStore(subscribe, snapshot, () => "light" as const);
 
   useEffect(() => {
-    const read = () => setMode(document.documentElement.classList.contains("dark") ? "dark" : "light");
-    read();
+    if (localStorage.getItem(KEY)) return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if (localStorage.getItem(KEY)) return;
-      const next = mq.matches ? "dark" : "light";
-      applyTheme(next);
-      setMode(next);
-    };
-    mq.addEventListener("change", onChange);
-    const obs = new MutationObserver(read);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => {
-      mq.removeEventListener("change", onChange);
-      obs.disconnect();
-    };
+    if (mq.matches && !document.documentElement.classList.contains("dark")) applyTheme("dark");
   }, []);
 
   function choose(next: "light" | "dark") {
     localStorage.setItem(KEY, next);
     applyTheme(next);
-    setMode(next);
   }
 
   return (
@@ -49,11 +55,9 @@ export function ThemeToggle({ labeled = false }: { labeled?: boolean }) {
           type="button"
           aria-label="Light theme"
           aria-pressed={mode === "light"}
+          suppressHydrationWarning
           onClick={() => choose("light")}
-          className={cn(
-            "grid h-8 w-8 place-items-center rounded-full transition",
-            mode === "light" ? "bg-white text-amber-500 shadow-sm" : "text-ink-muted",
-          )}
+          className="theme-sun"
         >
           <Sun className="h-4 w-4" />
         </button>
@@ -61,11 +65,9 @@ export function ThemeToggle({ labeled = false }: { labeled?: boolean }) {
           type="button"
           aria-label="Dark theme"
           aria-pressed={mode === "dark"}
+          suppressHydrationWarning
           onClick={() => choose("dark")}
-          className={cn(
-            "grid h-8 w-8 place-items-center rounded-full transition",
-            mode === "dark" ? "bg-[#5B4CF5] text-white shadow-sm" : "text-ink-muted",
-          )}
+          className="theme-moon"
         >
           <Moon className="h-4 w-4" />
         </button>

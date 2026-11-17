@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownLeft, Receipt, Trash2 } from "lucide-react";
-import { deleteOrderAction } from "@/actions/admin-orders";
-import { ConfirmDialog } from "@/components/ui/modal";
-import { useAct } from "@/components/ui/use-act";
+import { ArrowDownLeft, Receipt } from "lucide-react";
 import { Chip, EmptyNote } from "@/components/ui/ui";
 import { cn } from "@/lib/cn";
 import { signedTaka, taka } from "@/lib/money";
@@ -22,10 +19,8 @@ const LEDGER_TITLE = { DEPOSIT: "Deposit", DUE_PAYMENT: "Due payment", ADJUSTMEN
 
 const statusTone = (s: string) => (s === "DELIVERED" || s === "WALLET_CHARGED" || s === "CASH_PAID" ? "leaf" : s === "CANCELLED" ? "red" : "amber");
 
-export function ActivityList({ items, heading, admin }: { items: ActivityItem[]; heading: string; admin?: boolean }) {
+export function ActivityList({ items, heading }: { items: ActivityItem[]; heading: string }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const [toDelete, setToDelete] = useState<string | null>(null);
-  const { act, pending } = useAct();
   const shown = items.filter((i) => filter === "all" || (filter === "orders" ? i.kind === "order" : i.kind === "ledger"));
 
   return (
@@ -76,16 +71,11 @@ export function ActivityList({ items, heading, admin }: { items: ActivityItem[];
                   {it.deliveredAt ? <p className="text-[10.5px] text-ink-muted/80">Delivered {fmtDateTime(it.deliveredAt)}</p> : null}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <p className="text-sm font-bold">{taka(it.amount)}</p>
+                  <p className="tnum text-sm font-bold">{taka(it.amount)}</p>
                   <div className="flex flex-wrap justify-end gap-1">
                     <Chip tone={statusTone(it.status)}>{it.status}</Chip>
                     <Chip tone={statusTone(it.paymentStatus)}>{it.paymentStatus}</Chip>
                   </div>
-                  {admin ? (
-                    <button className="btn btn-danger btn-sm gap-1" onClick={() => setToDelete(it.id)}>
-                      <Trash2 className="h-3 w-3" /> Delete
-                    </button>
-                  ) : null}
                 </div>
               </li>
             ) : (
@@ -102,29 +92,14 @@ export function ActivityList({ items, heading, admin }: { items: ActivityItem[];
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className={cn("text-sm font-bold", it.amount >= 0 ? "text-leaf-deep" : "text-red-400")}>{signedTaka(it.amount)}</p>
-                  <p className="text-[11px] text-ink-muted">balance {taka(it.balanceAfter)}</p>
+                  <p className={cn("tnum text-sm font-bold", it.amount >= 0 ? "text-leaf-deep" : "text-red-400")}>{signedTaka(it.amount)}</p>
+                  <p className="tnum text-[11px] text-ink-muted">balance {taka(it.balanceAfter)}</p>
                 </div>
               </li>
             ),
           )}
         </ul>
       )}
-
-      <ConfirmDialog
-        open={toDelete !== null}
-        title="Delete this order?"
-        text="This permanently removes the order. Wallet charges are refunded."
-        confirmLabel="Delete"
-        danger
-        busy={pending}
-        onClose={() => setToDelete(null)}
-        onConfirm={() => {
-          const id = toDelete;
-          if (!id) return;
-          act(() => deleteOrderAction(id), { success: "Order deleted", onOk: () => setToDelete(null) });
-        }}
-      />
     </section>
   );
 }

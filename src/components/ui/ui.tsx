@@ -44,7 +44,7 @@ export function StatCard({
       </div>
       <p
         className={cn(
-          "relative z-10 mt-2 font-display text-2xl font-bold",
+          "tnum relative z-10 mt-2 text-2xl font-bold",
           tone === "spice" && "text-spice-deep",
           tone === "leaf" && "text-leaf-deep",
         )}

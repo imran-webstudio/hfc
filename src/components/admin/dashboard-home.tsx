@@ -166,7 +166,7 @@ export function DashboardHome({
         </article>
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-6 lg:overflow-visible">
+      <div className="mt-3 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 lg:grid-cols-6">
         <Tile className="hidden lg:flex" label="Today's orders" value={stats.todaysOrders} icon={<ShoppingBag className="h-4 w-4" />} />
         <Tile label="Delivered" value={stats.delivered} icon={<Check className="h-4 w-4" />} />
         <Tile label="Total sale" value={taka(stats.totalSales)} icon={<TrendingUp className="h-4 w-4" />} />
@@ -194,7 +194,7 @@ export function DashboardHome({
 
 function Tile({ label, value, icon, className }: { label: string; value: string | number; icon: ReactNode; className?: string }) {
   return (
-    <div className={cn("surface-card flex min-w-[138px] flex-1 flex-col justify-between rounded-2xl px-4 py-3", className)}>
+    <div className={cn("surface-card flex min-w-0 flex-col justify-between rounded-2xl px-3 py-3 sm:px-4", className)}>
       <div className="flex items-center justify-between gap-2 text-xs font-medium text-ink-muted">
         {label}
         {icon}

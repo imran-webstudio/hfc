@@ -1,8 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
+import { OrderSearchButton } from "@/components/admin/filters";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { greeting } from "@/lib/time";
@@ -96,6 +98,11 @@ export function AdminPhoneBar({ firstName }: { firstName: string }) {
         <h1 className="min-w-0 truncate text-[1.7rem] font-semibold tracking-tight">{title}</h1>
       )}
       <div className="flex shrink-0 items-center gap-2">
+        {pathname.startsWith("/admin/orders") ? (
+          <Suspense fallback={null}>
+            <OrderSearchButton />
+          </Suspense>
+        ) : null}
         {home ? (
           <span className="grid h-10 w-10 place-items-center rounded-full bg-[#5B4CF5] text-sm font-semibold text-white" aria-hidden>
             {firstName.slice(0, 1).toUpperCase()}
