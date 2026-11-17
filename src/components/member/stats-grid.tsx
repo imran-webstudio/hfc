@@ -1,4 +1,5 @@
 import { Chip, StatCard } from "@/components/ui/ui";
+import { statusLabel } from "@/lib/labels";
 import { taka } from "@/lib/money";
 import type { MemberSummary } from "@/server/summary";
 
@@ -14,7 +15,7 @@ export function StatsGrid({ s }: { s: MemberSummary }) {
         <div className="stat-card surface-card">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Payment mode</p>
           <div className="relative z-10 mt-3">
-            <Chip tone="leaf">{s.paymentMode}</Chip>
+            <Chip tone="leaf">{statusLabel(s.paymentMode)}</Chip>
           </div>
         </div>
       </div>
