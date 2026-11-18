@@ -3,14 +3,19 @@
 import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import {
+  addFloorAction,
   addManagerAction,
   createOfficeAction,
+  deleteFloorAction,
+  deleteOfficeAction,
   managerCandidatesAction,
   removeManagerAction,
   saveLunchCutoffAction,
   setOfficeActiveAction,
+  updateFloorAction,
+  updateOfficeAction,
 } from "@/actions/admin-team";
-import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 import { Chip } from "@/components/ui/ui";
 import { cn } from "@/lib/cn";
@@ -56,13 +61,20 @@ export function NewLocationForm() {
 }
 
 type Manager = { userId: string; name: string; email: string | null; role: string };
-export type LocationRow = { id: string; name: string; address: string | null; active: boolean; lunchCutoff: string; managers: Manager[] };
+export type FloorRow = { id: string; name: string };
+export type LocationRow = { id: string; name: string; address: string | null; active: boolean; lunchCutoff: string; managers: Manager[]; floors: FloorRow[] };
 
 export function LocationCard({ office }: { office: LocationRow }) {
   const { act, pending } = useAct();
   const [cutoff, setCutoff] = useState(office.lunchCutoff);
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editName, setEditName] = useState(office.name);
+  const [editAddress, setEditAddress] = useState(office.address ?? "");
+  const [newFloor, setNewFloor] = useState("");
+  const [floorEdits, setFloorEdits] = useState<Record<string, string>>({});
   const dirty = cutoff.trim() !== office.lunchCutoff;
+  const buildingDirty = editName.trim() !== office.name || editAddress.trim() !== (office.address ?? "");
 
   return (
     <li className="surface-card rounded-3xl p-5">
@@ -120,6 +132,89 @@ export function LocationCard({ office }: { office: LocationRow }) {
         )}
       </div>
 
+      {/* Building edit + delete (spec §11.1). Delete is refused server-side while
+          members or orders reference the building. */}
+      <form
+        className="mt-4 border-t border-line pt-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          act(() => updateOfficeAction(office.id, { name: editName, address: editAddress }), { success: "Building updated" });
+        }}
+      >
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Building</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <input className="input" aria-label="Building name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <input className="input" aria-label="Building address" placeholder="Address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+        </div>
+        <div className="mt-2 flex gap-2">
+          <button type="submit" className="btn btn-ghost btn-sm" disabled={!buildingDirty || pending}>
+            Save building
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm text-[#E03131]" disabled={pending} onClick={() => setConfirmDelete(true)}>
+            Delete building
+          </button>
+        </div>
+      </form>
+
+      {/* Dynamic floors for this building (spec §11.2). */}
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Floors{office.floors.length ? ` · ${office.floors.length}` : ""}</p>
+        {office.floors.length === 0 ? <p className="mt-2 text-[11px] text-ink-muted">No floors yet — add the first one below.</p> : null}
+        <ul className="mt-2 space-y-1.5">
+          {office.floors.map((f) => {
+            const val = floorEdits[f.id] ?? f.name;
+            return (
+              <li key={f.id} className="flex items-center gap-2">
+                <input
+                  className="input h-9 flex-1"
+                  aria-label={`Floor name for ${f.name}`}
+                  value={val}
+                  onChange={(e) => setFloorEdits((s) => ({ ...s, [f.id]: e.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={pending || val.trim() === f.name}
+                  onClick={() => act(() => updateFloorAction(f.id, val), { success: "Floor updated" })}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-[#E03131]"
+                  disabled={pending}
+                  onClick={() => act(() => deleteFloorAction(f.id), { success: "Floor deleted" })}
+                >
+                  Delete
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <form
+          className="mt-2 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(() => addFloorAction(office.id, newFloor), { success: "Floor added", onOk: () => setNewFloor("") });
+          }}
+        >
+          <input className="input h-9 flex-1" placeholder="New floor — any label, e.g. 3 or Rooftop" value={newFloor} onChange={(e) => setNewFloor(e.target.value)} />
+          <button type="submit" className="btn btn-leaf btn-sm" disabled={pending || !newFloor.trim()}>
+            Add floor
+          </button>
+        </form>
+      </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${office.name}?`}
+        text="The building can only be deleted when no members are assigned and it has no orders. Its floors, managers and menu copies will be removed."
+        confirmLabel="Delete building"
+        danger
+        busy={pending}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => act(() => deleteOfficeAction(office.id), { success: "Building deleted", onOk: () => setConfirmDelete(false) })}
+      />
       {open ? <ManagersModal office={office} onClose={() => setOpen(false)} /> : null}
     </li>
   );

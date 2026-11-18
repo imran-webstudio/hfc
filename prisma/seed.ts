@@ -22,8 +22,10 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@hfc.example";
 
 async function main() {
   console.log("Wiping existing data…");
+  await prisma.auditLog.deleteMany();
   await prisma.ledgerEntry.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.floor.deleteMany();
   await prisma.stockOut.deleteMany();
   await prisma.menuOption.deleteMany();
   await prisma.savedMeal.deleteMany();
@@ -64,23 +66,23 @@ async function main() {
     banned?: boolean;
   };
   const people: Seed[] = [
-    { name: "Ziaul Karim", office: AMBON, floor: "03", desk: "12T - SVA - MON 2159", balance: 0 },
+    { name: "Ziaul Karim", office: AMBON, floor: "3", desk: "12T - SVA - MON 2159", balance: 0 },
     { name: "Hasan Mahmud", office: AMBON, floor: "15", desk: "065", balance: 0 },
     { name: "Shahriar Rashid", office: AMBON, floor: "3", desk: "A-21", balance: -1200 },
-    { name: "Fahim Kabir", office: AMBON, floor: "3rd", desk: "D-14", balance: 0 },
+    { name: "Fahim Kabir", office: AMBON, floor: "3", desk: "D-14", balance: 0 },
     { name: "Mahfuza Rahman", office: AMBON, floor: "6", desk: "B-07", balance: -980 },
     { name: "Parvez Ahmed", office: AMBON, floor: "2", desk: "C-03", balance: 450 },
     { name: "Sayeed Asif", office: AMBON, floor: "15", desk: "ST-11", balance: -850 },
     { name: "Samira Islam", office: AMBON, floor: "3", desk: "A-02", balance: 0 },
-    { name: "Imtiaz Alam", office: AMBON, floor: "03", desk: "E-33", balance: -750 },
+    { name: "Imtiaz Alam", office: AMBON, floor: "3", desk: "E-33", balance: -750 },
     { name: "Mahedi Shikder", office: AMBON, floor: "6", desk: "B-19", balance: 300 },
     { name: "Jihad Hossain", office: AMBON, floor: "2", desk: "C-12", balance: -700 },
     { name: "Mohammad Sufiyan", office: AMBON, floor: "15", desk: "070", balance: 0 },
-    { name: "Dewan Hossain", office: AMBON, floor: "3rd", desk: "D-02", balance: -650 },
+    { name: "Dewan Hossain", office: AMBON, floor: "3", desk: "D-02", balance: -650 },
     { name: "Sumon Mollah", office: AMBON, floor: "6", desk: "B-30", balance: 1500 },
     { name: "Hasan Razib", office: APARAJITA, floor: "2", desk: "H-1", balance: 0 },
     { name: "Fazle Amin", office: APARAJITA, floor: "3", desk: "H-9", balance: -600 },
-    { name: "Zarif Hasan", office: APARAJITA, floor: "03", desk: "H-12", balance: 0 },
+    { name: "Zarif Hasan", office: APARAJITA, floor: "3", desk: "H-12", balance: 0 },
     { name: "Shamim Hossain", office: APARAJITA, floor: "2", desk: "H-3", type: "ONE_TIME", balance: 0 },
     { name: "Ayesha Siddique", office: APARAJITA, floor: "3", desk: "H-15", balance: -540 },
     { name: "Bayazid Ahmed", office: MEDONA, floor: "7", desk: "M-101", balance: 0 },
@@ -95,6 +97,24 @@ async function main() {
     { name: "Rasel Sarker", office: null, floor: "", desk: "", balance: 0 },
     { name: "Banned Example", office: AMBON, floor: "2", desk: "Z-1", balance: 0, banned: true },
   ];
+
+  // Dynamic floor registry (spec §11): one Floor row per distinct member floor per
+  // building (seed spellings were normalised above: "03"/"3rd" collapsed into "3").
+  {
+    const perOffice = new Map<string, Set<string>>();
+    const add = (office: string | null, floor: string) => {
+      if (!office || !floor) return;
+      if (!perOffice.has(office)) perOffice.set(office, new Set());
+      perOffice.get(office)!.add(floor);
+    };
+    for (const p of people) add(p.office, p.floor);
+    add(MEDONA, "7"); // Imran
+    add(AMBON, "2"); // catering account
+    add(APARAJITA, "2"); // Farhana (manager)
+    for (const [office, names] of perOffice) {
+      await prisma.floor.createMany({ data: [...names].sort().map((name) => ({ officeId: offices[office], name })) });
+    }
+  }
 
   const slug = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "");
   const users: Record<string, string> = {};
@@ -277,11 +297,7 @@ async function main() {
       data: {
         userId: admin.id,
         officeId: offices[AMBON],
-        slot: "LUNCH",
         mealDate,
-        title: h.title,
-        unitPrice: h.amount,
-        quantity: 1,
         amount: h.amount,
         status: h.cancelled ? "CANCELLED" : "DELIVERED",
         paymentStatus: h.cancelled ? "UNPAID" : "WALLET_CHARGED",
@@ -289,19 +305,32 @@ async function main() {
         placedById: h.phone ? catering.id : null,
         createdAt: at(-h.ago, 10, 2 + (h.ago % 50), 10),
         deliveredAt: h.cancelled ? null : at(-h.ago, 13, 31, 20),
+        paidAt: h.cancelled ? null : at(-h.ago, 13, 31, 20),
         cancelledAt: h.cancelled ? at(-h.ago, 11, 5) : null,
+        items: {
+          create: [{ slot: "LUNCH" as Slot, title: h.title, unitPrice: h.amount, quantity: 1, subtotal: h.amount }],
+        },
       },
     });
   }
-  let bal = -2030;
-  for (const [amount, ago, note] of [
-    [970, 36, null],
-    [760, 12, "Bkash payment"],
-  ] as [number, number, string | null][]) {
-    bal += amount;
-    await prisma.ledgerEntry.create({
-      data: { userId: admin.id, type: "DUE_PAYMENT" as LedgerType, amount, balanceAfter: bal + (ago === 36 ? 0 : 0), note, createdById: catering.id, createdAt: at(-ago, 13, 30, 7) },
-    });
+  // Ledger under the spec invariant (balance = Total Deposit − Total Bill): every live
+  // order bills at creation (ORDER_BILL −amount); the two payments are plain DEPOSITs.
+  // Events are applied oldest-first so balanceAfter is chronologically correct, ending
+  // at −2030 + 970 + 760 = −300, matching Imran's stored balance.
+  {
+    type Ev = { ago: number; type: LedgerType; amount: number; note: string | null; at: Date };
+    const events: Ev[] = [
+      ...live.map((h): Ev => ({ ago: h.ago, type: "ORDER_BILL", amount: -h.amount, note: `Order · ${h.title}`, at: at(-h.ago, 10, 2 + (h.ago % 50), 10) })),
+      { ago: 36, type: "DEPOSIT" as LedgerType, amount: 970, note: null, at: at(-36, 13, 30, 7) },
+      { ago: 12, type: "DEPOSIT" as LedgerType, amount: 760, note: "Bkash payment", at: at(-12, 13, 30, 7) },
+    ].sort((a, b) => b.ago - a.ago);
+    let running = 0;
+    for (const ev of events) {
+      running += ev.amount;
+      await prisma.ledgerEntry.create({
+        data: { userId: admin.id, type: ev.type, amount: ev.amount, balanceAfter: running, note: ev.note, createdById: catering.id, createdAt: ev.at },
+      });
+    }
   }
 
   // ---- today's & tomorrow's live orders -------------------------------------
@@ -311,31 +340,45 @@ async function main() {
     idx: number,
     qty: number,
     status: "PENDING" | "DELIVERED" | "CANCELLED",
-    pay: "UNPAID" | "WALLET_CHARGED" | "CASH_PAID" | "DUE" = "UNPAID",
+    pay: "UNPAID" | "WALLET_CHARGED" | "CASH_PAID" = "UNPAID",
     note?: string,
   ) => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: users[who] } });
     const opt = await prisma.menuOption.findUniqueOrThrow({ where: { id: optionIds[`${user.building}|${idx}`] } });
+    const amount = opt.price * qty;
     await prisma.order.create({
       data: {
         userId: user.id,
         officeId: opt.officeId,
-        optionId: opt.id,
-        slot: opt.slot,
         mealDate: dayStr(off),
-        title: opt.title,
-        unitPrice: opt.price,
-        quantity: qty,
-        amount: opt.price * qty,
+        amount,
         status,
         paymentStatus: pay,
         note: note ?? null,
         placedById: note === "Phone order" ? catering.id : null,
         createdAt: at(off, 9, 15),
         deliveredAt: status === "DELIVERED" ? at(off, 13, 5) : null,
+        paidAt: status === "DELIVERED" && pay !== "UNPAID" ? at(off, 13, 5) : null,
         cancelledAt: status === "CANCELLED" ? at(off, 9, 40) : null,
+        items: {
+          create: [{ optionId: opt.id, slot: opt.slot, title: opt.title, unitPrice: opt.price, quantity: qty, subtotal: amount }],
+        },
       },
     });
+    // Keep the member's ledger consistent with the invariant: bill at creation, and a
+    // CASH_PAYMENT deposit record when the seeded order is already cash-paid.
+    const seedLedger = async (type: LedgerType, amt: number, noteText: string, when: Date) => {
+      const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { balance: true } });
+      const balanceAfter = fresh.balance + amt;
+      await prisma.user.update({ where: { id: user.id }, data: { balance: balanceAfter } });
+      await prisma.ledgerEntry.create({
+        data: { userId: user.id, type, amount: amt, balanceAfter, note: noteText, createdById: catering.id, createdAt: when },
+      });
+    };
+    if (status !== "CANCELLED") {
+      await seedLedger("ORDER_BILL", -amount, `Order · ${opt.title}`, at(off, 9, 15));
+      if (pay === "CASH_PAID") await seedLedger("CASH_PAYMENT", amount, "Cash paid · order", at(off, 13, 5));
+    }
   };
   await mk("Ziaul Karim", 0, 0, 1, "DELIVERED", "WALLET_CHARGED");
   await mk("Hasan Mahmud", 0, 1, 2, "PENDING");
@@ -347,7 +390,7 @@ async function main() {
   await mk("Shamim Hossain", 0, 1, 1, "DELIVERED", "UNPAID");
   await mk("Bayazid Ahmed", 0, 0, 1, "PENDING");
   await mk("Khalid Hasan", 0, 2, 1, "PENDING");
-  await mk("Wasim Ali", 0, 0, 1, "DELIVERED", "DUE");
+  await mk("Wasim Ali", 0, 0, 1, "DELIVERED", "UNPAID");
   await mk("Alo Uddin", 0, 1, 1, "PENDING");
   await mk("Sumon Mollah", 1, 3, 1, "PENDING");
   await mk("Samira Islam", 1, 4, 2, "PENDING");

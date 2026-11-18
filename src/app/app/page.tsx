@@ -27,10 +27,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const zone = viewer.zone;
   const place = [zone?.name, viewer.floor ? `F${viewer.floor}` : null, viewer.desk ? `Desk ${viewer.desk}` : null].filter(Boolean).join(" · ");
   const dayOff = zone ? await isDayOff(zone.id, date) : false;
-  const options = zone && !dayOff ? await optionsForDate(zone.id, date) : [];
+  // Members see stocked-out dishes too (flagged "Stock Out"), but NEVER numeric stock:
+  // only the `available` boolean crosses into the member payload (spec §5/§14.3).
+  const options = zone && !dayOff ? await optionsForDate(zone.id, date, { includeStockedOut: true }) : [];
   const mine = await prisma.order.findMany({
     where: { userId: viewer.id, mealDate: date, status: { not: "CANCELLED" } },
     orderBy: { createdAt: "desc" },
+    include: { items: true },
   });
 
   const slots: FoodSlot[] = (["LUNCH", "DINNER"] as const)
@@ -38,7 +41,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     .map((slot) => {
       const state = zone ? slotState(zone, date, slot, dayOff) : { open: false, reason: "Choose your office in Profile" };
       const cutoff = slot === "LUNCH" ? (zone?.lunchCutoff ?? "13:00") : (zone?.dinnerCutoff ?? "20:00");
-      const existing = mine.find((o) => o.slot === slot);
       return {
         slot,
         cutoff,
@@ -47,12 +49,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         closesLabel: closesLabel(date, cutoff, state.open),
         items: options
           .filter((o) => o.slot === slot)
-          .map((o) => ({ id: o.id, title: o.title, description: o.description, price: o.price, imageUrl: o.imageUrl, remaining: o.remaining })),
-        existing: existing
-          ? { id: existing.id, title: existing.title, quantity: existing.quantity, amount: existing.amount, status: existing.status }
-          : null,
+          .map((o) => ({ id: o.id, title: o.title, description: o.description, price: o.price, imageUrl: o.imageUrl, available: o.available })),
       };
     });
 
-  return <OrderFood dayName={WEEKDAYS_LONG[weekdayOf(date)]} date={date} place={place} balance={viewer.balance} slots={slots} />;
+  const existing = mine.map((o) => ({
+    id: o.id,
+    title: o.items.map((i) => i.title).join(", ") || "Order",
+    quantity: o.items.reduce((q, i) => q + i.quantity, 0),
+    amount: o.amount,
+    status: o.status,
+  }));
+
+  return <OrderFood dayName={WEEKDAYS_LONG[weekdayOf(date)]} date={date} place={place} balance={viewer.balance} slots={slots} existing={existing} />;
 }

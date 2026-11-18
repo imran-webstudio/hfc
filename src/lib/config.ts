@@ -1,7 +1,5 @@
 /** Central place for env-driven business configuration. */
 export const config = {
-  /** Regular (wallet) members may not order once their due would exceed this (BDT). */
-  maxWalletDue: Number(process.env.MAX_WALLET_DUE ?? 1000),
   /** How far ahead (days) a meal can be pre-ordered. */
   maxAdvanceDays: 42,
   /** Dev-only credentials login. */

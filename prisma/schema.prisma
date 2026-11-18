@@ -32,7 +32,6 @@ enum PaymentStatus {
   UNPAID
   WALLET_CHARGED
   CASH_PAID
-  DUE
 }
 
 enum LedgerType {
@@ -40,6 +39,11 @@ enum LedgerType {
   DUE_PAYMENT
   ADJUSTMENT
   REFUND
+  // Written (negative) when an order is created/edited/cancelled/deleted so the stored
+  // balance always equals Total Deposit − Total Bill. NOT a deposit; excluded from Total Deposit.
+  ORDER_BILL
+  // Written (positive) when a delivered order is marked Cash Paid. Counts toward Total Deposit.
+  CASH_PAYMENT
 }
 
 // ---------------------------------------------------------------- Auth.js
@@ -77,6 +81,8 @@ model User {
   ledger         LedgerEntry[] @relation("LedgerMember")
   ledgerCreated  LedgerEntry[] @relation("LedgerCreatedBy")
   managedOffices OfficeManager[]
+  auditLogs      AuditLog[]    @relation("AuditActor")
+  auditSubject   AuditLog[]    @relation("AuditMember")
 
   @@index([zoneId])
 }
@@ -130,6 +136,21 @@ model Office {
   options  MenuOption[]
   orders   Order[]
   dayOffs  DayOff[]
+  floors   Floor[]
+}
+
+// A named floor belonging to one building (Office). Dynamic: admins add/edit/delete
+// floors from Staff. Members keep the floor NAME as a string on User.floor (snapshot
+// simplicity for historical orders); profile/admin selections are validated against
+// this registry.
+model Floor {
+  id       String @id @default(cuid())
+  officeId String
+  name     String
+  office   Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@unique([officeId, name])
+  @@index([officeId])
 }
 
 model OfficeManager {
@@ -165,8 +186,9 @@ model MenuOption {
   title       String
   description String?
   price       Int
-  // Daily cap for this office's copy of the dish. Null = unlimited.
-  // Remaining = maxQuantity − non-cancelled orders for this option on that meal date.
+  // Daily cap for the dish. Null = unlimited. Spec §5: the cap is a GLOBAL pool shared by
+  // every office copy in the groupId — Remaining = maxQuantity − non-cancelled ordered
+  // quantity summed across all office copies of this group for that meal date.
   // StockOut is a separate manual "don't serve today" override and is not written when the cap hits 0.
   maxQuantity Int?
   imageUrl    String?
@@ -175,7 +197,7 @@ model MenuOption {
 
   office    Office     @relation(fields: [officeId], references: [id], onDelete: Cascade)
   stockOuts StockOut[]
-  orders    Order[]
+  orderItems OrderItem[]
 
   @@index([officeId, weekday, slot])
   @@index([officeId, date, slot])
@@ -201,17 +223,15 @@ model SavedMeal {
 }
 
 // ---------------------------------------------------------------- Orders & wallet
+// One Order = one checkout: a single mealDate / office / member with a grand total
+// (`amount`) and one or more OrderItems. Delivery status and payment status are fully
+// independent (spec §6.8): delivery never charges; payment is a separate staff action.
 model Order {
   id            String        @id @default(cuid())
   userId        String
   officeId      String
-  optionId      String?
-  slot          Slot
   mealDate      String // YYYY-MM-DD (Asia/Dhaka)
-  title         String // snapshot
-  unitPrice     Int // snapshot
-  quantity      Int           @default(1)
-  amount        Int
+  amount        Int // grand total = sum of item subtotals, counted once in Total Bill
   status        OrderStatus   @default(PENDING)
   paymentStatus PaymentStatus @default(UNPAID)
   note          String?
@@ -219,15 +239,33 @@ model Order {
   createdAt     DateTime      @default(now())
   deliveredAt   DateTime?
   cancelledAt   DateTime?
+  paidAt        DateTime? // set by the Cash Paid / Wallet Charge action on a delivered order
 
   user     User        @relation("OrderMember", fields: [userId], references: [id], onDelete: Cascade)
   placedBy User?       @relation("OrderPlacedBy", fields: [placedById], references: [id], onDelete: SetNull)
   office   Office      @relation(fields: [officeId], references: [id])
-  option   MenuOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
 
   @@index([userId, createdAt])
   @@index([officeId, mealDate])
   @@index([mealDate])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  optionId  String? // SetNull: past items keep their snapshot if the dish is removed
+  slot      Slot
+  title     String // snapshot
+  unitPrice Int // snapshot
+  quantity  Int    @default(1)
+  subtotal  Int // unitPrice * quantity
+
+  order  Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  option MenuOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([optionId])
 }
 
 model LedgerEntry {
@@ -244,4 +282,21 @@ model LedgerEntry {
   createdBy User? @relation("LedgerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+}
+
+// Staff-side audit trail for financial actions (spec §8.2). Deliberately NOT part of the
+// member's account history: it survives Clear Order History so the reset itself is auditable.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  memberId  String
+  action    String // DEPOSIT | EDIT_BALANCE | CASH_PAID | WALLET_CHARGE | ORDER_DELETE | CLEAR_HISTORY
+  detail    String?
+  amount    Int?
+  createdAt DateTime @default(now())
+
+  actor  User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  member User  @relation("AuditMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
 }

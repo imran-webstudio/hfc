@@ -24,6 +24,7 @@ export default async function TeamPage() {
               active: o.active,
               lunchCutoff: o.lunchCutoff,
               managers: o.managers.map((m) => ({ userId: m.userId, name: m.user.name ?? m.user.email ?? "Member", email: m.user.email, role: m.user.role })),
+              floors: o.floors.map((f) => ({ id: f.id, name: f.name })),
             }}
           />
         ))}

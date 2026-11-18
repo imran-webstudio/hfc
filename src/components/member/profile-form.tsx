@@ -6,14 +6,22 @@ import { useAct } from "@/components/ui/use-act";
 
 type Props = {
   offices: { id: string; name: string }[];
+  /** Dynamic floor registry (spec §11.3): floors of the selected building only. */
+  floorsByOffice?: Record<string, string[]>;
   initial: { employeeId: string; phone: string; officeId: string; floor: string; desk: string; address: string };
   zoneName: string | null;
 };
 
-export function ProfileForm({ offices, initial, zoneName }: Props) {
+export function ProfileForm({ offices, floorsByOffice, initial, zoneName }: Props) {
   const { act, pending } = useAct();
   const [v, setV] = useState(initial);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV((s) => ({ ...s, [k]: e.target.value }));
+  const floorOptions = v.officeId ? floorsByOffice?.[v.officeId] ?? [] : [];
+  const onOffice = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const officeId = e.target.value;
+    const opts = floorsByOffice?.[officeId] ?? [];
+    setV((s) => ({ ...s, officeId, floor: opts.includes(s.floor) ? s.floor : opts[0] ?? s.floor }));
+  };
 
   return (
     <form
@@ -34,7 +42,7 @@ export function ProfileForm({ offices, initial, zoneName }: Props) {
       <div className="grid grid-cols-[1fr_7rem] gap-3">
         <div>
           <label className="field-label" htmlFor="office">Office / Building</label>
-          <select id="office" className="input" required value={v.officeId} onChange={set("officeId")}>
+          <select id="office" className="input" required value={v.officeId} onChange={onOffice}>
             <option value="">Select office…</option>
             {offices.map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
@@ -44,7 +52,16 @@ export function ProfileForm({ offices, initial, zoneName }: Props) {
         </div>
         <div>
           <label className="field-label" htmlFor="floor">Floor</label>
-          <input id="floor" className="input" required placeholder="e.g. 5" value={v.floor} onChange={set("floor")} />
+          {floorOptions.length ? (
+            <select id="floor" className="input" required value={v.floor} onChange={set("floor")}>
+              <option value="">Select floor…</option>
+              {floorOptions.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          ) : (
+            <input id="floor" className="input" required placeholder="e.g. 5" value={v.floor} onChange={set("floor")} />
+          )}
         </div>
       </div>
       <div>

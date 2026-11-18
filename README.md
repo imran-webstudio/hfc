@@ -67,7 +67,6 @@ See [`.env.example`](.env.example). Nothing secret is committed; `.env` is git-i
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | for Google sign-in | OAuth client; redirect URI `{AUTH_URL}/api/auth/callback/google` |
 | `SUPER_ADMIN_EMAILS` | recommended | comma-separated emails promoted to SUPER_ADMIN on sign-in |
 | `ENABLE_DEV_LOGIN` | dev only | `true` enables the "sign in as" credentials login. **Never set in production.** |
-| `MAX_WALLET_DUE` | optional (1000) | Regular members can't order when their wallet due would exceed this (৳) |
 | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | optional | meal photo uploads; without them uploads go to `public/uploads` (local dev only) |
 | `SEED_ADMIN_EMAIL` | seed | email of the seeded SUPER_ADMIN ("Imran"). Set it to your Gmail to own the demo data |
 
@@ -96,14 +95,14 @@ Banned members cannot sign in (sessions are checked against the DB on every requ
 | Route | Features |
 |---|---|
 | `/` | Dark landing (hero, logo, copy), **Continue with Google**, dev sign-in box, suspended-account message |
-| `/app` | Greeting + zone card; order-window card (open/closed/day-off, cutoffs) with date badge → **Delivery date** calendar (past disabled, up to 6 weeks ahead); **Menu** per slot (Lunch/Dinner) with option cards, quantity stepper, place order; your existing order per slot with **Cancel** (until cutoff); empty states (“No published meals right now at …”, no zone, day off); wallet limit + cutoff + stock + day-off validation |
-| `/app/orders` | **Your history**: Balance / Total due / Due (wallet) / Unpaid cash orders / Payment mode, Meals ordered (n cancelled) / Total meal spend / Deposits received / Due payments; **All activity** with All / Orders / Deposits & wallet filters; order cards (status + payment chips, placed-by, phone-order note, delivered time) and wallet ledger cards (+amount, balance) |
+| `/app` | Greeting + zone card; order-window card (open/closed/day-off, cutoffs) with date badge → **Delivery date** calendar (past disabled, up to 6 weeks ahead); **Menu** per slot (Lunch/Dinner) with option cards, quantity stepper, place order; your existing order per slot with **Cancel** (until cutoff); empty states (“No published meals right now at …”, no zone, day off); cutoff + stock + day-off validation; multi-item cart (one order can hold many meals, lunch + dinner together); stocked-out dishes stay visible with a “Stock Out” label and no ordering controls — members never see numeric stock |
+| `/app/orders` | **Your history (spec §9)**: Current Balance / Meals ordered / Total Bill / Total Deposit (Balance = Total Deposit − Total Bill); **All activity** with All / Orders / Deposits & wallet filters; order cards (status + payment chips, placed-by, phone-order note, delivered time) and wallet ledger cards (+amount, balance) |
 | `/app/profile` | Employee ID, Phone, Office/Building (sets catering zone), Floor, Desk, Address; all required; **Save changes** |
 | `/admin` | Dashboard: Office + Floor filters, **Catering is open / Take day off** (and resume), order-window card, Today's Orders / Portions / Delivered / Pending / Total Sales, Active users / Users with due / Outstanding due, quick actions, **Pack by item** accordion (who ordered it + zone) |
 | `/admin/menu` | Office select (All / one), lunch + dinner cutoffs (**Save cutoffs for all**), **Offer dinner**, **Weekly schedule** (Sat–Fri, lunch/dinner, add / edit / remove options, today highlighted), **Live · today** with stock-out / restock, publish for a specific date, photo upload, **Saved meals** (Use / Archive, **Show archived** with Restore) |
-| `/admin/orders` | **Distribution board**: filters (Location, Floor, Date, Search member), order cards with Mark delivered (Regular → wallet charged), Cancel, Cash paid / Due (One-time); **Order for member** phone-order form (office, meal day, member typeahead, meal, quantity, note) |
+| `/admin/orders` | **Distribution board**: filters (Location, Floor, Date, Search member), order cards with Mark delivered (delivery only — never charges), Cancel, Edit order, and on delivered orders the two payment actions Cash paid / Wallet charge (for every member); **Order for member** phone-order form (office, meal day, member typeahead, multiple meals with quantities, order summary + grand total, note default “Phone Order”) |
 | `/admin/users` | **Users & deposits**: Zone / Floor / Search filters; cards with role badge, profile summary, balance/due chip, Regular/One-time, **Assign zone**, switch type, **Deposit to wallet** (amount + note), Ban/Unban (confirm), Delete (confirm); SUPER_ADMIN rows omit ban/delete |
-| `/admin/users/[memberId]` | **Member account**: summary, phone link, **Edit phone** and **Edit balance** dialogs, the same stat cards, **Full history** with per-order **Delete** (wallet charges are refunded) |
+| `/admin/users/[memberId]` | **Member account**: summary, phone link, **Edit phone** and **Edit balance** dialogs, the same stat cards, **Full history** with per-order **Delete** (the order's bill — and any cash-paid deposit — is reversed) and **Clear order history** (atomic account reset, only at exactly ৳0 balance) |
 | `/admin/team` | **Staff & offices**: New location form, per-location Active switch, lunch cutoff (Save cutoff disabled until changed), managers list, **Managers** dialog (assigned + remove, searchable candidates + add) |
 
 Also: PWA manifest + minimal service worker + **Install app** banner (Install / Not now / ×).
@@ -134,20 +133,24 @@ Business rules live in `src/server/*`, so changing e.g. how deliveries are charg
 
 ## Assumptions (where the spec was ambiguous or silent)
 
+**Spec P0 (migration `0003_spec_p0`)**
+- Multi-item orders (`OrderItem`), payment model (`UNPAID | CASH_PAID | WALLET_CHARGED`, `paidAt`), global stock with advisory locking, dynamic `Floor` registry per building (Staff page: add/edit/delete floors, edit/delete building with relation guards; profile and admin filters read the registry), `AuditLog` for financial actions, and **Clear order history** on the member account (atomic reset, balance must be exactly ৳0, audit row survives).
+- Members receive only an availability boolean for stock — no numeric stock in member UI or payloads — and stocked-out dishes remain visible labelled “Stock Out”.
+- Edit Order is staff-only and only for `UNPAID` orders; a paid/charged order must be deleted and re-created (documented in `src/server/orders.ts`).
+
 **Data & money**
-- Money is whole taka (`Int`). Wallet balance can go negative = **due**. *Total due* = wallet due + delivered cash orders still `UNPAID`/`DUE`.
-- Order statuses: `PENDING → DELIVERED | CANCELLED`. Payment statuses: `UNPAID`, `WALLET_CHARGED`, `CASH_PAID`, `DUE`.
-- **Regular** members are charged to the wallet when staff marks the order *delivered*; **One-time** members stay `UNPAID` until staff taps *Cash paid* or *Due*.
-- Deposits are only for Regular accounts. A deposit made while the balance is negative is recorded as a **Due payment**, otherwise **Deposit**. *Edit balance* writes an `ADJUSTMENT` ledger row for the difference; deleting a wallet-charged order writes a `REFUND`.
+- Money is whole taka (`Int`). Wallet balance can go negative = **due**. *Total due* = the negative part of the balance (unpaid orders are already inside the balance — see the accounting invariant below — so they are never added twice).
+- Order statuses: `PENDING → DELIVERED | CANCELLED`. Payment statuses: `UNPAID`, `WALLET_CHARGED`, `CASH_PAID`. One order holds many items (`OrderItem`); the grand total counts once.
+- **Accounting invariant (spec §9/§17): stored balance = Total Deposit − Total Bill at every instant.** An order is billed at creation via an `ORDER_BILL` ledger row (−amount; never a deposit). Delivery changes only delivery status. On a delivered order staff pick **Cash paid** (writes a `CASH_PAYMENT` ledger row, +amount into Total Deposit, sets `paidAt`) or **Wallet charge** (status + `paidAt` only — no deposit, no second balance movement). Both actions are idempotent and available for every member; the old Regular/One-time payment split and the `DUE` payment status are gone (the `accountType` field remains for profile compatibility only).
+- Deposits are for every member and always recorded as `DEPOSIT`. *Edit balance* writes an `ADJUSTMENT` ledger row for the difference. Cancelling/deleting/editing an order writes the reverse `ORDER_BILL` delta (and reverses a `CASH_PAYMENT` when a cash-paid order is deleted) in the same transaction. Financial actions also write a staff-side `AuditLog` row.
 - “Deposits received” sums `DEPOSIT` rows, “Due payments” sums `DUE_PAYMENT` rows.
-- **Wallet limit** (not in the spec): Regular members can't place an order if due + pending orders + new order would exceed `MAX_WALLET_DUE` (default ৳1,000).
 - Members get one active order per slot per day (“everyone picks one option”); staff phone orders aren't limited.
 
 **Menu & cutoffs**
 - Cutoff for a slot closes ordering for that meal day from the cutoff time on; future days are always open (up to 42 days ahead); past days are closed. Admin/phone orders skip cutoffs.
 - Weekly templates repeat on their weekday; dated meals (an extra “Publish for a specific date” form — the live site's intro mentions dated meals but no form was visible) add to that day. Options created under “All locations” share a group, so edit/remove/stock-out apply to every office; choosing a single office scopes the change to it.
 - “Weekly schedule” preview shows the first active office when “All locations” is selected, as the live copy says.
-- *Stock out* is per option per day. *Take day off* is per office per date (dashboard applies it to every office in the current filter).
+- *Stock* is a **global pool per dish** (spec §5): the daily cap counts ordered quantities across every office copy sharing the dish's `groupId`, validated inside the order transaction under a Postgres advisory lock (`pg_advisory_xact_lock` on groupId+date) so simultaneous orders cannot oversell. *Stock out* is a manual per-day override; a StockOut on any copy of the group stocks the dish out everywhere. *Take day off* is per office per date (dashboard applies it to every office in the current filter).
 - Saved meals: *Use* fills the add/dated form; *Archive* / *Restore* toggle visibility. Seed keeps 11 archived meals and no active ones (to match the observed empty state).
 
 **Roles & people**

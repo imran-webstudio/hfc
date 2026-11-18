@@ -16,10 +16,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const viewer = await requireStaff();
   const sp = await searchParams;
   const scope = officeScope(viewer);
-  const [offices, floors] = await Promise.all([listOffices({ scope }), memberFloors(scope)]);
+  const offices = await listOffices({ scope });
   const today = todayStr();
   const date = isDateStr(sp.date) ? sp.date : today;
   const office = sp.office && offices.some((o) => o.id === sp.office) ? sp.office : "all";
+  const floors = await memberFloors(scope, office !== "all" ? office : undefined);
   const floor = sp.floor && floors.includes(sp.floor) ? sp.floor : "all";
   const q = sp.q ?? "";
 
@@ -30,10 +31,10 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     memberName: o.user.name ?? "Member",
     employeeId: o.user.employeeId,
     place: [o.office.name, o.user.floor ? `F${o.user.floor}` : null, o.user.desk ? `Desk ${o.user.desk}` : null].filter(Boolean).join(" · "),
-    accountType: o.user.accountType,
-    slot: o.slot,
-    title: o.title,
-    quantity: o.quantity,
+    officeId: o.officeId,
+    mealDate: o.mealDate,
+    lines: o.items.map((i) => ({ title: i.title, slot: i.slot, quantity: i.quantity, subtotal: i.subtotal })),
+    editLines: o.items.map((i) => ({ optionId: i.optionId, title: i.title, quantity: i.quantity, subtotal: i.subtotal })),
     amount: o.amount,
     status: o.status,
     paymentStatus: o.paymentStatus,

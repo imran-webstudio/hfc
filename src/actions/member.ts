@@ -6,7 +6,7 @@ import { assertViewer } from "@/lib/session";
 import { cancelOrder, placeMemberOrder } from "@/server/orders";
 import { updateOwnProfile, type ProfileInput } from "@/server/members";
 
-export async function placeOrderAction(input: { optionId: string; date: string; quantity: number }) {
+export async function placeOrderAction(input: { items: { optionId: string; quantity: number }[]; date: string }) {
   return run(async () => {
     const viewer = await assertViewer();
     await placeMemberOrder(viewer, input);
