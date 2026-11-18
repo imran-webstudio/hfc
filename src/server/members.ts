@@ -4,6 +4,7 @@ import { UserError } from "@/lib/action";
 import { sortFloors } from "@/lib/floors";
 import type { Viewer } from "@/lib/session";
 import { officeScope } from "@/lib/session";
+import { writeAudit } from "@/server/audit";
 import type { OfficeScope } from "@/server/offices";
 
 /** Members visible to a viewer: everyone for super admins; own offices (+ unassigned) for managers. */
@@ -40,7 +41,20 @@ export async function listMembers(scope: OfficeScope, f: MemberFilters) {
   });
 }
 
+/**
+ * Floor filter options come from the Floor registry (spec §11.3): when a building is
+ * selected, only that building's floors; otherwise every registered floor in scope.
+ * Falls back to members' free-text floors only when the registry is empty (pre-P0 data).
+ */
 export async function memberFloors(scope: OfficeScope, officeId?: string) {
+  const registry = await prisma.floor.findMany({
+    where: {
+      ...(officeId && officeId !== "all" ? { officeId } : scope ? { officeId: { in: scope } } : {}),
+    },
+    select: { name: true },
+    distinct: ["name"],
+  });
+  if (registry.length) return sortFloors(registry.map((r) => r.name));
   const rows = await prisma.user.findMany({
     where: {
       AND: [memberScopeWhere(scope), officeId && officeId !== "all" ? { zoneId: officeId } : {}, { floor: { not: null } }],
@@ -121,9 +135,46 @@ export async function updateOwnProfile(userId: string, input: ProfileInput) {
   if (!/^[0-9+\-\s()]{6,20}$/.test(fields.phone)) throw new UserError("Enter a valid phone number.");
   const office = await prisma.office.findUnique({ where: { id: input.officeId } });
   if (!office || !office.active) throw new UserError("Choose a valid office.");
+  // Floors are a dynamic registry per building (spec §11): when the building has
+  // registered floors, the profile floor must be one of them.
+  const registered = await prisma.floor.findMany({ where: { officeId: office.id }, select: { name: true } });
+  if (registered.length && !registered.some((f) => f.name === fields.floor)) {
+    throw new UserError("Choose a floor from this building's floor list.");
+  }
   await prisma.user.update({
     where: { id: userId },
     data: { ...fields, building: office.name, zoneId: office.id },
+  });
+}
+
+/**
+ * Clear Order History — complete account reset (spec §8.3). One atomic transaction:
+ * deletes the member's orders (items cascade) and ALL ledger entries, and leaves the
+ * balance at exactly ৳0. Profile and login are untouched. Only allowed when the current
+ * balance is exactly ৳0, so no money silently vanishes. The reset itself is written to
+ * the staff AuditLog, which is not part of the member's history and survives the wipe.
+ */
+export async function clearMemberHistory(actor: Viewer, memberId: string) {
+  await assertMemberAccess(actor, memberId);
+  return prisma.$transaction(async (tx) => {
+    const member = await tx.user.findUnique({ where: { id: memberId }, select: { balance: true, name: true } });
+    if (!member) throw new UserError("Member not found.");
+    if (member.balance !== 0) {
+      throw new UserError(`Clear Order History needs a balance of exactly ৳0 — this member's balance is ৳${member.balance}. Settle or adjust it first.`);
+    }
+    const orders = await tx.order.count({ where: { userId: memberId } });
+    const ledger = await tx.ledgerEntry.count({ where: { userId: memberId } });
+    await tx.order.deleteMany({ where: { userId: memberId } });
+    await tx.ledgerEntry.deleteMany({ where: { userId: memberId } });
+    await tx.user.update({ where: { id: memberId }, data: { balance: 0 } });
+    await writeAudit(tx, {
+      actorId: actor.id,
+      memberId,
+      action: "CLEAR_HISTORY",
+      detail: `Cleared ${orders} order(s) and ${ledger} ledger entr(ies) for ${member.name ?? "member"}`,
+      amount: 0,
+    });
+    return { orders, ledger };
   });
 }
 
