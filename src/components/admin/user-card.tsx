@@ -97,7 +97,7 @@ export function UsersBoard({ rows, search, filters }: { rows: UserRow[]; search?
         <Wallet className="h-4 w-4" /> Add money
       </button>
 
-      {payOpen ? <AddMoney rows={rows.filter((r) => r.accountType === "REGULAR" && !r.banned)} onClose={() => setPayOpen(false)} /> : null}
+      {payOpen ? <AddMoney rows={rows.filter((r) => !r.banned)} onClose={() => setPayOpen(false)} /> : null}
     </div>
   );
 }

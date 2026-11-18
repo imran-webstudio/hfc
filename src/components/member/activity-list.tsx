@@ -16,7 +16,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "wallet", label: "Deposits & wallet" },
 ];
 
-const LEDGER_TITLE = { DEPOSIT: "Deposit", DUE_PAYMENT: "Due payment", ADJUSTMENT: "Balance adjustment", REFUND: "Refund" } as const;
+const LEDGER_TITLE = { DEPOSIT: "Deposit", DUE_PAYMENT: "Due payment", ADJUSTMENT: "Balance adjustment", REFUND: "Refund", ORDER_BILL: "Order bill", CASH_PAYMENT: "Cash paid" } as const;
 
 const statusTone = (s: string) => (s === "DELIVERED" || s === "WALLET_CHARGED" || s === "CASH_PAID" ? "leaf" : s === "CANCELLED" ? "red" : "amber");
 
@@ -57,12 +57,16 @@ export function ActivityList({ items, heading }: { items: ActivityItem[]; headin
                   <Receipt className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">
-                    {it.title}
-                    {it.quantity > 1 ? <span className="text-ink-muted"> × {it.quantity}</span> : null}
-                  </p>
+                  <p className="text-sm font-bold">{it.title}</p>
+                  <ul className="mt-0.5 space-y-0.5">
+                    {it.lines.map((l, idx) => (
+                      <li key={idx} className="text-[11px] text-ink-muted">
+                        {l.title} × {l.quantity} · {statusLabel(l.slot)} · {taka(l.subtotal)}
+                      </li>
+                    ))}
+                  </ul>
                   <p className="text-[11px] text-ink-muted">
-                    {statusLabel(it.slot)} · {it.office} · meal day {fmtDay(it.mealDate)}
+                    {it.office} · meal day {fmtDay(it.mealDate)}
                   </p>
                   <p className="text-[10.5px] text-ink-muted/80">
                     Ordered {fmtDateTime(it.at)}

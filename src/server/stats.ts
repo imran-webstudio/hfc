@@ -32,10 +32,10 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
       where: orderWhere,
       include: {
         office: { select: { id: true, name: true } },
-        option: { select: { imageUrl: true } },
+        items: { include: { option: { select: { imageUrl: true } } } },
         user: { select: { id: true, name: true, floor: true, desk: true } },
       },
-      orderBy: [{ slot: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ createdAt: "asc" }],
     }),
     prisma.user.findMany({ where: userWhere, select: { id: true, balance: true } }),
   ]);
@@ -69,40 +69,55 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
     }
   >();
   for (const o of live) {
-    const key = `${o.slot}|${o.title}|${o.officeId}`;
-    const entry = pack.get(key) ?? {
-      key,
-      slot: o.slot,
-      title: o.title,
-      officeName: o.office.name,
-      imageUrl: o.option?.imageUrl ?? null,
-      orders: 0,
-      portions: 0,
-      amount: 0,
-      people: [],
-    };
-    entry.orders += 1;
-    entry.portions += o.quantity;
-    entry.amount += o.amount;
-    if (!entry.imageUrl && o.option?.imageUrl) entry.imageUrl = o.option.imageUrl;
-    entry.people.push({
-      orderId: o.id,
-      name: o.user.name ?? "Member",
-      floor: o.user.floor,
-      desk: o.user.desk,
-      quantity: o.quantity,
-      status: o.status,
-    });
-    pack.set(key, entry);
+    for (const item of o.items) {
+      const key = `${item.slot}|${item.title}|${o.officeId}`;
+      const entry = pack.get(key) ?? {
+        key,
+        slot: item.slot,
+        title: item.title,
+        officeName: o.office.name,
+        imageUrl: item.option?.imageUrl ?? null,
+        orders: 0,
+        portions: 0,
+        amount: 0,
+        people: [],
+      };
+      entry.orders += 1;
+      entry.portions += item.quantity;
+      entry.amount += item.subtotal;
+      if (!entry.imageUrl && item.option?.imageUrl) entry.imageUrl = item.option.imageUrl;
+      entry.people.push({
+        orderId: o.id,
+        name: o.user.name ?? "Member",
+        floor: o.user.floor,
+        desk: o.user.desk,
+        quantity: item.quantity,
+        status: o.status,
+      });
+      pack.set(key, entry);
+    }
   }
+
+  // "Total Cash Paid" (spec §3.4) = cash collected on the dashboard date (by paidAt,
+  // Asia/Dhaka), across orders in scope — not merely cash-paid orders for that meal date.
+  const dhakaDate = (d: Date) => new Date(d.getTime() + 6 * 3600_000).toISOString().slice(0, 10);
+  const cashRows = await prisma.order.findMany({
+    where: {
+      paymentStatus: "CASH_PAID",
+      paidAt: { not: null },
+      ...(officeIds ? { officeId: { in: officeIds } } : {}),
+      ...(floor ? { user: { floor } } : {}),
+    },
+    select: { amount: true, paidAt: true },
+  });
 
   return {
     todaysOrders: live.length,
-    portions: live.reduce((s, o) => s + o.quantity, 0),
+    portions: live.reduce((s, o) => s + o.items.reduce((q, i) => q + i.quantity, 0), 0),
     delivered: live.filter((o) => o.status === "DELIVERED").length,
     pending: live.filter((o) => o.status === "PENDING").length,
     totalSales: live.reduce((s, o) => s + o.amount, 0),
-    cashPaid: live.filter((o) => o.paymentStatus === "CASH_PAID").reduce((s, o) => s + o.amount, 0),
+    cashPaid: cashRows.filter((o) => o.paidAt && dhakaDate(o.paidAt) === f.date).reduce((s, o) => s + o.amount, 0),
     creditBalance,
     activeUsers: users.length,
     usersWithDue,
@@ -231,7 +246,7 @@ export type DistributionFilters = { officeId?: string; floor?: string; date: str
 export async function distributionOrders(scope: OfficeScope, f: DistributionFilters) {
   const officeIds = scopedOfficeIds(scope, f.officeId);
   const q = f.q?.trim();
-  return prisma.order.findMany({
+  const rows = await prisma.order.findMany({
     where: {
       mealDate: f.date,
       ...(officeIds ? { officeId: { in: officeIds } } : {}),
@@ -247,11 +262,25 @@ export async function distributionOrders(scope: OfficeScope, f: DistributionFilt
           : {}),
       },
     },
-    orderBy: [{ slot: "asc" }, { status: "asc" }, { createdAt: "asc" }],
     include: {
       office: { select: { name: true } },
       placedBy: { select: { name: true } },
+      items: true,
       user: { select: { id: true, name: true, employeeId: true, floor: true, desk: true, building: true, accountType: true } },
     },
   });
+  // Spec §6.12 delivered sorting: Unpaid first (latest delivered first), then Paid
+  // (latest payment first). Pending stay oldest-first for the packing queue.
+  const pending = rows.filter((o) => o.status === "PENDING").sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const delivered = rows
+    .filter((o) => o.status === "DELIVERED")
+    .sort((a, b) => {
+      const aUnpaid = a.paymentStatus === "UNPAID" ? 0 : 1;
+      const bUnpaid = b.paymentStatus === "UNPAID" ? 0 : 1;
+      if (aUnpaid !== bUnpaid) return aUnpaid - bUnpaid;
+      if (aUnpaid === 0) return (b.deliveredAt?.getTime() ?? 0) - (a.deliveredAt?.getTime() ?? 0);
+      return (b.paidAt?.getTime() ?? 0) - (a.paidAt?.getTime() ?? 0);
+    });
+  const cancelled = rows.filter((o) => o.status === "CANCELLED").sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return [...pending, ...delivered, ...cancelled];
 }

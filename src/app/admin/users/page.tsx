@@ -13,21 +13,14 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const viewer = await requireStaff();
   const sp = await searchParams;
   const scope = officeScope(viewer);
-  const [offices, floors] = await Promise.all([listOffices({ scope }), memberFloors(scope)]);
+  const offices = await listOffices({ scope });
   const zone = sp.zone === "none" || offices.some((o) => o.id === sp.zone) ? (sp.zone as string) : "all";
+  const floors = await memberFloors(scope, zone !== "all" && zone !== "none" ? zone : undefined);
   const floor = sp.floor && floors.includes(sp.floor) ? sp.floor : "all";
   const q = sp.q ?? "";
 
   const members = await listMembers(scope, { zone, floor, q });
-  const [cash, managers] = await Promise.all([
-    prisma.order.groupBy({
-      by: ["userId"],
-      where: { userId: { in: members.map((m) => m.id) }, status: "DELIVERED", paymentStatus: { in: ["UNPAID", "DUE"] } },
-      _sum: { amount: true },
-    }),
-    prisma.officeManager.findMany({ where: { userId: { in: members.map((m) => m.id) } }, select: { userId: true } }),
-  ]);
-  const cashBy = new Map(cash.map((c) => [c.userId, c._sum.amount ?? 0]));
+  const managers = await prisma.officeManager.findMany({ where: { userId: { in: members.map((m) => m.id) } }, select: { userId: true } });
   const managerIds = new Set(managers.map((m) => m.userId));
 
   const rows: UserRow[] = members.map((m) => ({
@@ -39,7 +32,9 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     accountType: m.accountType,
     zoneId: m.zoneId,
     balance: m.balance,
-    due: Math.max(0, -m.balance) + (cashBy.get(m.id) ?? 0),
+    // Balance already includes every valid order's bill (billed at creation), so Due is
+    // simply the negative part of the balance — unpaid orders must not be added again.
+    due: Math.max(0, -m.balance),
     employeeId: m.employeeId,
     officeName: m.zone?.name ?? null,
     floor: m.floor,

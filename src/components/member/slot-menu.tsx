@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { MapPin, Minus, Plus, UtensilsCrossed } from "lucide-react";
+import { MapPin, Minus, Plus, UtensilsCrossed, X } from "lucide-react";
 import { cancelOrderAction, placeOrderAction } from "@/actions/member";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
@@ -15,9 +15,10 @@ export type MenuItem = {
   description: string | null;
   price: number;
   imageUrl: string | null;
-  remaining: number | null;
+  /** Availability ONLY — no numeric stock ever reaches the member UI (spec §5/§14.3). */
+  available: boolean;
 };
-export type ExistingOrder = { id: string; title: string; quantity: number; amount: number; status: string; imageUrl?: string | null };
+export type ExistingOrder = { id: string; title: string; quantity: number; amount: number; status: string };
 
 export type FoodSlot = {
   slot: "LUNCH" | "DINNER";
@@ -26,7 +27,6 @@ export type FoodSlot = {
   reason?: string;
   closesLabel: string | null;
   items: MenuItem[];
-  existing: ExistingOrder | null;
 };
 
 function DishPlaceholder({ compact = false }: { compact?: boolean }) {
@@ -54,26 +54,42 @@ export function OrderFood({
   place,
   balance,
   slots,
+  existing,
 }: {
   dayName: string;
   date: string;
   place: string;
   balance: number;
   slots: FoodSlot[];
+  existing: ExistingOrder[];
 }) {
   const { act, pending } = useAct();
   const [slotId, setSlotId] = useState<"LUNCH" | "DINNER">(slots[0]?.slot ?? "LUNCH");
-  const [selected, setSelected] = useState<string | null>(null);
-  const [qty, setQty] = useState(1);
+  // One cart for the whole checkout: dishes from lunch AND dinner in a single order (spec §14.1).
+  const [cart, setCart] = useState<Record<string, number>>({});
   const slot = slots.find((s) => s.slot === slotId) ?? slots[0];
-  const chosen = slot?.items.find((i) => i.id === selected) ?? null;
-  const total = chosen ? chosen.price * qty : 0;
+  const allItems = useMemo(() => slots.flatMap((s) => s.items), [slots]);
+  const lines = allItems.filter((i) => (cart[i.id] ?? 0) > 0).map((i) => ({ item: i, qty: cart[i.id], subtotal: i.price * cart[i.id] }));
+  const total = lines.reduce((s, l) => s + l.subtotal, 0);
+  const totalQty = lines.reduce((s, l) => s + l.qty, 0);
   const after = balance - total;
-  const empty = useMemo(() => slots.every((s) => s.items.length === 0 && !s.existing), [slots]);
+  const empty = useMemo(() => slots.every((s) => s.items.length === 0), [slots]);
 
-  if (!slot) {
-    return <EmptyMenu />;
-  }
+  const setQty = (id: string, qty: number) =>
+    setCart((c) => {
+      const next = { ...c };
+      if (qty <= 0) delete next[id];
+      else next[id] = Math.min(20, qty);
+      return next;
+    });
+
+  const placeOrder = () =>
+    act(() => placeOrderAction({ items: lines.map((l) => ({ optionId: l.item.id, quantity: l.qty })), date }), {
+      success: `Order placed — ${taka(total)}`,
+      onOk: () => setCart({}),
+    });
+
+  if (!slot) return <EmptyMenu />;
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
@@ -92,11 +108,7 @@ export function OrderFood({
                 <button
                   key={s.slot}
                   type="button"
-                  onClick={() => {
-                    setSlotId(s.slot);
-                    setSelected(null);
-                    setQty(1);
-                  }}
+                  onClick={() => setSlotId(s.slot)}
                   className={cn("h-11 rounded-xl px-5 text-sm font-semibold", slot.slot === s.slot ? "bg-white shadow-sm dark:bg-[#17171F]" : "text-ink-muted")}
                 >
                   {s.slot === "LUNCH" ? "Lunch" : "Dinner"}
@@ -111,25 +123,25 @@ export function OrderFood({
         ) : (
           <ul className="grid grid-cols-2 gap-3 lg:gap-4">
             {slot.items.map((it) => {
-              const on = selected === it.id;
-              const max = it.remaining == null ? 20 : Math.min(20, it.remaining);
+              const qty = cart[it.id] ?? 0;
+              const on = qty > 0;
               return (
                 <li key={it.id} className="relative aspect-square overflow-hidden rounded-[1.4rem] bg-[#E7E7E4] dark:bg-[#14141C]">
                   <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
-                  {it.remaining != null ? (
-                    <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-ink">{it.remaining} left</span>
+                  {!it.available ? (
+                    <span className="absolute right-2 top-2 rounded-full bg-[#0B0B0F]/85 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Stock Out</span>
                   ) : null}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent p-3 pt-10 text-white">
                     <p className="line-clamp-2 text-sm font-semibold leading-tight">{it.title}</p>
                     <div className="mt-1 flex items-end justify-between gap-2">
                       <p className="tnum text-sm font-semibold">{taka(it.price)}</p>
-                      {on ? (
+                      {!it.available ? null : on ? (
                         <div className="flex items-center rounded-full bg-[#5B4CF5] text-white">
-                          <button type="button" aria-label="Decrease" className="grid h-8 w-8 place-items-center" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+                          <button type="button" aria-label="Decrease" className="grid h-8 w-8 place-items-center" onClick={() => setQty(it.id, qty - 1)}>
                             <Minus className="h-3.5 w-3.5" />
                           </button>
                           <span className="w-4 text-center text-sm font-bold">{qty}</span>
-                          <button type="button" aria-label="Increase" className="grid h-8 w-8 place-items-center" disabled={qty >= max} onClick={() => setQty((q) => Math.min(max, q + 1))}>
+                          <button type="button" aria-label="Increase" className="grid h-8 w-8 place-items-center" disabled={qty >= 20} onClick={() => setQty(it.id, qty + 1)}>
                             <Plus className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -137,11 +149,8 @@ export function OrderFood({
                         <button
                           type="button"
                           aria-label={`Add ${it.title}`}
-                          disabled={!slot.open || it.remaining === 0}
-                          onClick={() => {
-                            setSelected(it.id);
-                            setQty(1);
-                          }}
+                          disabled={!slot.open}
+                          onClick={() => setQty(it.id, 1)}
                           className="grid h-8 w-8 place-items-center rounded-full bg-[#5B4CF5] text-white disabled:opacity-40"
                         >
                           <Plus className="h-4 w-4" />
@@ -155,37 +164,44 @@ export function OrderFood({
           </ul>
         )}
 
-        {slot.existing ? (
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-rice px-4 py-3">
+        {existing.map((o) => (
+          <div key={o.id} className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-rice px-4 py-3">
             <p className="text-sm">
-              <span className="font-semibold">{slot.existing.title}</span>
-              <span className="text-ink-muted"> ×{slot.existing.quantity}</span>
-              <span className="ml-2 text-xs text-ink-muted">{statusLabel(slot.existing.status)}</span>
+              <span className="font-semibold">{o.title}</span>
+              <span className="text-ink-muted"> ×{o.quantity}</span>
+              <span className="ml-2 text-xs text-ink-muted">{statusLabel(o.status)}</span>
             </p>
-            {slot.existing.status === "PENDING" ? (
-              <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => cancelOrderAction(slot.existing!.id), { success: "Order cancelled" })}>
+            {o.status === "PENDING" ? (
+              <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => cancelOrderAction(o.id), { success: "Order cancelled" })}>
                 Cancel
               </button>
             ) : null}
           </div>
-        ) : null}
+        ))}
       </div>
 
       <aside className="mt-6 hidden rounded-[1.6rem] border border-line bg-rice p-5 shadow-[var(--hfc-card-shadow)] lg:block">
         <h2 className="text-lg font-semibold">Your order</h2>
-        {chosen ? (
-          <div className="mt-4 flex items-center gap-3">
-            <div className="relative h-14 w-14 overflow-hidden rounded-xl bg-[#E7E7E4] dark:bg-[#14141C]">
-              <DishPhoto src={chosen.imageUrl} alt="" compact />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{chosen.title}</p>
-              <p className="text-sm text-ink-muted">×{qty}</p>
-            </div>
-            <p className="tnum font-semibold">{taka(total)}</p>
-          </div>
+        {lines.length ? (
+          <ul className="mt-4 space-y-3">
+            {lines.map(({ item, qty, subtotal }) => (
+              <li key={item.id} className="flex items-center gap-3">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#E7E7E4] dark:bg-[#14141C]">
+                  <DishPhoto src={item.imageUrl} alt="" compact />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{item.title}</p>
+                  <p className="text-sm text-ink-muted">×{qty}</p>
+                </div>
+                <p className="tnum font-semibold">{taka(subtotal)}</p>
+                <button type="button" aria-label={`Remove ${item.title}`} className="text-ink-muted hover:text-ink" onClick={() => setQty(item.id, 0)}>
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="mt-3 text-sm text-ink-muted">Tap + on a dish to add it.</p>
+          <p className="mt-3 text-sm text-ink-muted">Tap + on dishes to build one order — lunch and dinner can go together.</p>
         )}
         {place ? (
           <p className="mt-4 flex items-start gap-2 rounded-2xl bg-[#F4F1FF] px-3 py-2 text-sm dark:bg-[#1c1a2e]">
@@ -194,42 +210,30 @@ export function OrderFood({
           </p>
         ) : null}
         <div className="mt-4 space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-ink-muted">Subtotal</span>
-            <span className="tnum">{taka(total)}</span>
-          </div>
           <div className="flex justify-between text-base font-semibold">
-            <span>Total</span>
+            <span>Grand total</span>
             <span className="tnum">{taka(total)}</span>
           </div>
-          {chosen ? (
+          {lines.length ? (
             <div className="flex justify-between text-[#E03131]">
-              <span>Wallet after order</span>
+              <span>Balance after order</span>
               <span className="tnum">{signedTaka(after)}</span>
             </div>
           ) : null}
         </div>
-        <button
-          className="btn cta mt-4 h-12 w-full"
-          disabled={pending || !chosen || !slot.open}
-          onClick={() => chosen && act(() => placeOrderAction({ optionId: chosen.id, date, quantity: qty }), { success: `Order placed — ${taka(total)}`, onOk: () => setSelected(null) })}
-        >
-          Place order{chosen ? ` · ${taka(total)}` : ""}
+        <button className="btn cta mt-4 h-12 w-full" disabled={pending || !lines.length} onClick={placeOrder}>
+          Place order{lines.length ? ` · ${taka(total)}` : ""}
         </button>
       </aside>
 
-      {chosen && slot.open ? (
+      {lines.length ? (
         <div className="fixed inset-x-0 z-30 mx-auto flex w-[min(100%-1rem,520px)] items-center gap-2 rounded-full bg-[#0B0B0F] px-2 py-2 text-white shadow-xl lg:hidden" style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3DDC97] text-sm font-bold text-[#0B0B0F]">{qty}</span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3DDC97] text-sm font-bold text-[#0B0B0F]">{totalQty}</span>
           <span className="min-w-0 flex-1 truncate text-sm">
-            {chosen.title} · <span className="tnum">{taka(total)}</span>
+            {lines.length} item{lines.length > 1 ? "s" : ""} · <span className="tnum">{taka(total)}</span>
           </span>
-          <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">Wallet after {signedTaka(after)}</span>
-          <button
-            className="btn cta h-10 shrink-0 rounded-full px-3 text-sm"
-            disabled={pending}
-            onClick={() => act(() => placeOrderAction({ optionId: chosen.id, date, quantity: qty }), { success: `Order placed — ${taka(total)}`, onOk: () => setSelected(null) })}
-          >
+          <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">Balance after {signedTaka(after)}</span>
+          <button className="btn cta h-10 shrink-0 rounded-full px-3 text-sm" disabled={pending} onClick={placeOrder}>
             Place order
           </button>
         </div>

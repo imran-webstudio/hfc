@@ -53,34 +53,60 @@ export async function weeklyOptions(officeId: string) {
 /**
  * Two layers decide if a dish can still be ordered on a meal date:
  *
- * 1. MenuOption.maxQuantity — the planned daily cap for this office's copy of the dish.
- *    Null means unlimited. Remaining = maxQuantity − the sum of quantities on non-cancelled
- *    orders for this optionId and meal date. Cancelling an order frees the cap.
- *    The number is copied to every office by fan-out, but each office counts only its own
- *    orders, because each kitchen packs its own portions.
+ * 1. MenuOption.maxQuantity — the planned daily cap for the dish. Null means unlimited.
+ *    Spec §5: stock is ONE GLOBAL POOL per dish (groupId), shared by all buildings.
+ *    Remaining = maxQuantity − the sum of item quantities on non-cancelled orders for
+ *    ANY office copy of this groupId on that meal date. Cancelling frees the pool.
  * 2. StockOut — a manual same-day override ("don't serve this today"). It blocks ordering
- *    even when the cap still has room, or when the cap is unlimited. Reaching 0 does not
- *    write a StockOut row, so a cancellation can reopen a capped dish and clearing a
- *    StockOut does not change the cap.
+ *    even when the cap still has room, or when the cap is unlimited. A StockOut row on any
+ *    office copy of the group applies to the group. Reaching 0 does not write a StockOut
+ *    row, so a cancellation can reopen a capped dish and clearing a StockOut does not
+ *    change the cap.
+ *
+ * `ordered` / `remaining` are ADMIN-ONLY numbers. Member-facing code must never receive
+ * them — members get only the derived `available` boolean (spec §5/§14.3/§20).
  */
 export type LiveOption = MenuOption & {
   stockedOut: boolean;
   ordered: number;
-  /** Null = unlimited and not manually stocked out. 0 = blocked. */
+  /** Null = unlimited and not manually stocked out. 0 = blocked. Admin-only. */
   remaining: number | null;
+  /** The only stock signal member-facing code may use. */
+  available: boolean;
 };
 
+type Db = Prisma.TransactionClient | typeof prisma;
+
+/** All MenuOption ids (every office copy) sharing a groupId. */
+export async function groupOptionIds(db: Db, groupId: string): Promise<string[]> {
+  const rows = await db.menuOption.findMany({ where: { groupId }, select: { id: true } });
+  return rows.map((r) => r.id);
+}
+
+/** Ordered quantity for a dish group on a date, summed across ALL offices (global pool). */
+export async function orderedQtyForGroup(db: Db, groupId: string, date: string, excludeOrderId?: string): Promise<number> {
+  const ids = await groupOptionIds(db, groupId);
+  if (!ids.length) return 0;
+  const items = await db.orderItem.findMany({
+    where: {
+      optionId: { in: ids },
+      order: { mealDate: date, status: { not: "CANCELLED" }, ...(excludeOrderId ? { id: { not: excludeOrderId } } : {}) },
+    },
+    select: { quantity: true },
+  });
+  return items.reduce((s, i) => s + i.quantity, 0);
+}
+
+/** Per-option ordered quantities, resolved through the global (group) pool. */
 export async function orderedQtyByOption(optionIds: string[], date: string) {
   const map = new Map<string, number>();
   if (!optionIds.length) return map;
-  const rows = await prisma.order.groupBy({
-    by: ["optionId"],
-    where: { optionId: { in: optionIds }, mealDate: date, status: { not: "CANCELLED" } },
-    _sum: { quantity: true },
-  });
-  for (const row of rows) {
-    if (row.optionId) map.set(row.optionId, row._sum.quantity ?? 0);
+  const options = await prisma.menuOption.findMany({ where: { id: { in: optionIds } }, select: { id: true, groupId: true } });
+  const byGroup = new Map<string, number>();
+  for (const groupId of new Set(options.map((o) => o.groupId))) {
+    byGroup.set(groupId, await orderedQtyForGroup(prisma, groupId, date));
   }
+  for (const o of options) map.set(o.id, byGroup.get(o.groupId) ?? 0);
   return map;
 }
 
@@ -105,10 +131,20 @@ export async function optionsForDate(officeId: string, date: string, opts: { inc
     rows.map((r) => r.id),
     date,
   );
+  // A manual StockOut on ANY office copy of the group stocks the dish out globally.
+  const groupIds = [...new Set(rows.map((r) => r.groupId))];
+  const groupStockOuts = groupIds.length
+    ? await prisma.stockOut.findMany({
+        where: { date, option: { groupId: { in: groupIds } } },
+        select: { option: { select: { groupId: true } } },
+      })
+    : [];
+  const outGroups = new Set(groupStockOuts.map((s) => s.option.groupId));
   const mapped: LiveOption[] = rows.map(({ stockOuts, ...o }) => {
-    const stockedOut = stockOuts.length > 0;
+    const stockedOut = stockOuts.length > 0 || outGroups.has(o.groupId);
     const ordered = used.get(o.id) ?? 0;
-    return { ...o, stockedOut, ordered, remaining: remainingFor(o.maxQuantity, ordered, stockedOut) };
+    const remaining = remainingFor(o.maxQuantity, ordered, stockedOut);
+    return { ...o, stockedOut, ordered, remaining, available: remaining !== 0 };
   });
   return opts.includeStockedOut ? mapped : mapped.filter((o) => !o.stockedOut);
 }
@@ -198,20 +234,35 @@ export async function removeOption(optionId: string, scope: OfficeScope) {
   });
 }
 
+/**
+ * Serialise stock checks for one dish+date inside the caller's transaction.
+ * pg_advisory_xact_lock is held until the transaction commits/rolls back, so two
+ * simultaneous orders for the same dish cannot both pass the cap check and oversell
+ * (spec §5/§19). Different dishes/dates lock different keys and proceed in parallel.
+ * Callers must acquire locks in a deterministic (sorted) order to avoid deadlocks
+ * between multi-item orders — see orders.ts, which sorts items by groupId first.
+ */
+export async function lockGroupStock(tx: Prisma.TransactionClient, groupId: string, date: string) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${groupId}:${date}`} )::bigint)`;
+}
+
+/**
+ * Validate one dish against the GLOBAL stock pool. Assumes lockGroupStock was already
+ * taken for this group+date in the same transaction. `excludeOrderId` lets Edit Order
+ * validate a replacement set without counting the order's own current items.
+ */
 export async function assertPortionCap(
   tx: Prisma.TransactionClient,
-  option: { id: string; maxQuantity: number | null },
+  option: { id: string; groupId: string; maxQuantity: number | null },
   date: string,
   quantity: number,
+  excludeOrderId?: string,
 ) {
-  const out = await tx.stockOut.findUnique({ where: { optionId_date: { optionId: option.id, date } } });
+  const out = await tx.stockOut.findFirst({ where: { date, option: { groupId: option.groupId } } });
   if (out) throw new UserError("Sorry, that meal is out of stock.");
   if (option.maxQuantity == null) return;
-  const used = await tx.order.aggregate({
-    where: { optionId: option.id, mealDate: date, status: { not: "CANCELLED" } },
-    _sum: { quantity: true },
-  });
-  const left = option.maxQuantity - (used._sum.quantity ?? 0);
+  const used = await orderedQtyForGroup(tx, option.groupId, date, excludeOrderId);
+  const left = option.maxQuantity - used;
   if (quantity > left) {
     throw new UserError(left <= 0 ? "This dish is sold out for that day." : `Only ${left} left for that day.`);
   }

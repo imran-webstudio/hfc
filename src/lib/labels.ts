@@ -5,7 +5,6 @@ const LABELS: Record<string, string> = {
   UNPAID: "Unpaid",
   WALLET_CHARGED: "Wallet charged",
   CASH_PAID: "Cash paid",
-  DUE: "Due",
   LUNCH: "Lunch",
   DINNER: "Dinner",
   WALLET: "Wallet",
@@ -14,6 +13,8 @@ const LABELS: Record<string, string> = {
   DUE_PAYMENT: "Due payment",
   ADJUSTMENT: "Balance adjustment",
   REFUND: "Refund",
+  ORDER_BILL: "Order bill",
+  CASH_PAYMENT: "Cash paid",
   REGULAR: "Regular",
   ONE_TIME: "One-time",
 };

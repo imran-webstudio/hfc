@@ -37,14 +37,13 @@ const toast = async (text) => page.waitForSelector(`[data-sonner-toast]:has-text
 await loginAs("admin@hfc.example");
 check("super admin lands on /app", page.url().endsWith("/app"));
 await page.goto(`${BASE}/app?date=${tomorrow}`);
-await page.click('button:has-text("Rui Fish Curry")');
+await page.click('button[aria-label="Add Rui Fish Curry"]');
 await page.click('button[aria-label="Increase"]');
-await page.click('button:has-text("Place lunch order")');
-check("member places order (toast)", await toast("lunch order placed"));
-await page.waitForSelector("text=Your order");
-const order = q(`select o.title||'|'||o.quantity||'|'||o.amount||'|'||o.status from "Order" o join "User" u on u.id=o."userId" where u.email='admin@hfc.example' and o."mealDate"='${tomorrow}' and o.status<>'CANCELLED'`);
-check("order persisted (qty 2 ×130)", order === "Rui Fish Curry|2|260|PENDING", order);
-await page.click('button:has-text("Cancel order")');
+await page.click('button:has-text("Place order")');
+check("member places order (toast)", await toast("Order placed"));
+const order = q(`select i.title||'|'||i.quantity||'|'||o.amount||'|'||o.status from "Order" o join "OrderItem" i on i."orderId"=o.id join "User" u on u.id=o."userId" where u.email='admin@hfc.example' and o."mealDate"='${tomorrow}' and o.status<>'CANCELLED'`);
+check("order persisted (qty 2 ×130, one Order with items)", order === "Rui Fish Curry|2|260|PENDING", order);
+await page.click('button:has-text("Cancel") >> nth=0');
 check("member cancels order", await toast("Order cancelled"));
 check("order is CANCELLED in DB", q(`select count(*) from "Order" where status='CANCELLED' and "mealDate"='${tomorrow}'`) === "1");
 
@@ -59,14 +58,22 @@ await page.goto(BASE + "/admin/orders");
 const before = q(`select balance from "User" where name='Hasan Mahmud'`);
 const card = page.locator("li", { hasText: "Hasan Mahmud" }).first();
 await card.locator('button:has-text("Mark delivered")').click();
-check("mark delivered (regular → wallet)", await toast("wallet charged"));
+check("mark delivered (no charge — delivery ≠ payment)", await toast("Delivered"));
 const after = q(`select balance from "User" where name='Hasan Mahmud'`);
-check("wallet charged 2×160", Number(before) - Number(after) === 320, `${before} → ${after}`);
+check("delivery does not move balance (billed at order time)", Number(before) === Number(after), `${before} → ${after}`);
+check("payment still UNPAID after delivery", q(`select "paymentStatus" from "Order" o join "User" u on u.id=o."userId" where u.name='Hasan Mahmud' and o."mealDate"=to_char((now() at time zone 'Asia/Dhaka')::date,'YYYY-MM-DD')`) === "UNPAID");
+await page.click('button:has-text("Delivered")');
+const deliveredCard = page.locator("li", { hasText: "Hasan Mahmud" }).first();
+await deliveredCard.locator('button:has-text("Wallet charge")').click();
+check("wallet charge action", await toast("Wallet charged"));
 check("payment status WALLET_CHARGED", q(`select "paymentStatus" from "Order" o join "User" u on u.id=o."userId" where u.name='Hasan Mahmud' and o."mealDate"=to_char((now() at time zone 'Asia/Dhaka')::date,'YYYY-MM-DD')`) === "WALLET_CHARGED");
+check("wallet charge moves no money (no deposit, bill already counted)", q(`select balance from "User" where name='Hasan Mahmud'`) === after);
 
+const shamimBefore = Number(q(`select balance from "User" where name='Shamim Hossain'`));
 const cashCard = page.locator("li", { hasText: "Shamim Hossain" }).first();
 await cashCard.locator('button:has-text("Cash paid")').click();
-check("one-time cash paid", await toast("cash paid"));
+check("cash paid (any member)", await toast("cash paid"));
+check("cash paid → CASH_PAYMENT ledger + balance up by order amount", q(`select count(*) from "LedgerEntry" l join "User" u on u.id=l."userId" where u.name='Shamim Hossain' and l.type='CASH_PAYMENT'`) === "1" && Number(q(`select balance from "User" where name='Shamim Hossain'`)) > shamimBefore);
 
 // phone order
 await page.click("text=Order for member >> nth=-1");
@@ -76,9 +83,10 @@ await page.fill("#po-member", "Samira");
 await page.click('li button:has-text("Samira Islam")');
 await page.waitForFunction(() => document.querySelectorAll("#po-meal option").length > 2);
 await page.selectOption("#po-meal", { index: 1 });
+await page.click('button:has-text("Add another meal")');
 await page.click('button:has-text("Place order for member")');
 check("phone order placed", await toast("Order placed for Samira"));
-check("phone order has placed_by + note", q(`select count(*) from "Order" o join "User" u on u.id=o."userId" where u.name='Samira Islam' and o.note='Phone order' and o."placedById" is not null and o."mealDate"='${tomorrow}'`) === "1");
+check("phone order has placed_by + note + items", q(`select count(*) from "Order" o join "User" u on u.id=o."userId" where u.name='Samira Islam' and o.note='Phone Order' and o."placedById" is not null and o."mealDate"='${tomorrow}' and exists (select 1 from "OrderItem" i where i."orderId"=o.id)`) === "1");
 
 // ---------------------------------------------------------------- admin: users
 await page.goto(BASE + "/admin/users?q=Parvez");
