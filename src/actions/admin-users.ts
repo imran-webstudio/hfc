@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { AccountType } from "@prisma/client";
 import { run } from "@/lib/action";
 import { assertStaff } from "@/lib/session";
-import { deleteMember, setAccountType, setBanned, setZone, updatePhone } from "@/server/members";
+import { clearMemberHistory, deleteMember, setAccountType, setBanned, setZone, updatePhone } from "@/server/members";
 import { recordDeposit, setBalance } from "@/server/wallet";
 import { assertMemberAccess } from "@/server/members";
 
@@ -50,6 +50,15 @@ export async function deleteMemberAction(memberId: string) {
 export async function editPhoneAction(memberId: string, phone: string) {
   return run(async () => {
     await updatePhone(await assertStaff(), memberId, phone);
+    refresh();
+  });
+}
+
+/** Clear Order History (spec §8.3): atomic account reset, balance must be exactly ৳0. */
+export async function clearHistoryAction(memberId: string) {
+  return run(async () => {
+    const actor = await assertStaff();
+    await clearMemberHistory(actor, memberId);
     refresh();
   });
 }

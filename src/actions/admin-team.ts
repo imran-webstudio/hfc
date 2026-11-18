@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { run } from "@/lib/action";
 import { assertStaff, assertSuperAdmin } from "@/lib/session";
-import { addManager, createOffice, managerCandidates, removeManager, setLunchCutoff, setOfficeActive } from "@/server/offices";
+import { addFloor, addManager, createOffice, deleteFloor, deleteOffice, managerCandidates, removeManager, setLunchCutoff, setOfficeActive, updateFloor, updateOffice } from "@/server/offices";
 import { officeScope } from "@/lib/session";
 import { UserError } from "@/lib/action";
 import { officeIdsForFilter, resumeCatering, setDayOff, setDayOffRange } from "@/server/stats";
@@ -15,6 +15,46 @@ export async function createOfficeAction(input: { name: string; address: string;
   return run(async () => {
     await assertSuperAdmin();
     await createOffice(input);
+    refresh();
+  });
+}
+
+export async function updateOfficeAction(officeId: string, input: { name: string; address: string }) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await updateOffice(officeId, input);
+    refresh();
+  });
+}
+
+export async function deleteOfficeAction(officeId: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await deleteOffice(officeId);
+    refresh();
+  });
+}
+
+export async function addFloorAction(officeId: string, name: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await addFloor(officeId, name);
+    refresh();
+  });
+}
+
+export async function updateFloorAction(floorId: string, name: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await updateFloor(floorId, name);
+    refresh();
+  });
+}
+
+export async function deleteFloorAction(floorId: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await deleteFloor(floorId);
     refresh();
   });
 }
