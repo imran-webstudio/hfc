@@ -15,8 +15,6 @@ const LABELS: Record<string, string> = {
   REFUND: "Refund",
   ORDER_BILL: "Order bill",
   CASH_PAYMENT: "Cash paid",
-  REGULAR: "Regular",
-  ONE_TIME: "One-time",
 };
 
 /** Friendly label for an order, payment, slot, or account enum. Unknown values pass through. */

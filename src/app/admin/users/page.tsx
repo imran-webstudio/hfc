@@ -29,7 +29,6 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     role: m.role,
     isManager: managerIds.has(m.id),
     banned: m.banned,
-    accountType: m.accountType,
     zoneId: m.zoneId,
     balance: m.balance,
     // Balance already includes every valid order's bill (billed at creation), so Due is

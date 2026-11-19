@@ -8,7 +8,7 @@ import { useAct } from "@/components/ui/use-act";
 import { addDays } from "@/lib/time";
 import { taka } from "@/lib/money";
 
-type Member = { id: string; name: string | null; employeeId: string | null; floor: string | null; desk: string | null; accountType: string };
+type Member = { id: string; name: string | null; employeeId: string | null; floor: string | null; desk: string | null };
 type Meal = { id: string; slot: string; title: string; price: number; available: boolean; label: string };
 type Row = { optionId: string; title: string; price: number; quantity: number };
 

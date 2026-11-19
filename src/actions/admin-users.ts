@@ -1,18 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { AccountType } from "@prisma/client";
+import type { Role } from "@prisma/client";
 import { run } from "@/lib/action";
-import { assertStaff } from "@/lib/session";
-import { clearMemberHistory, deleteMember, setAccountType, setBanned, setZone, updatePhone } from "@/server/members";
+import { assertStaff, assertSuperAdmin } from "@/lib/session";
+import { clearMemberHistory, deleteMember, setBanned, setRole, setZone, updatePhone } from "@/server/members";
 import { recordDeposit, setBalance } from "@/server/wallet";
 import { assertMemberAccess } from "@/server/members";
 
 const refresh = () => revalidatePath("/", "layout");
 
-export async function setAccountTypeAction(memberId: string, type: AccountType) {
+export async function setRoleAction(memberId: string, role: Role) {
   return run(async () => {
-    await setAccountType(await assertStaff(), memberId, type);
+    await setRole(await assertSuperAdmin(), memberId, role);
     refresh();
   });
 }

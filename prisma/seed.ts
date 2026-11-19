@@ -5,7 +5,7 @@
  *   npm run db:seed          (wipes and reseeds the database)
  */
 import { randomUUID } from "node:crypto";
-import { PrismaClient, type AccountType, type LedgerType, type Slot } from "@prisma/client";
+import { PrismaClient, type LedgerType, type Slot } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -61,7 +61,6 @@ async function main() {
     office: string | null;
     floor: string;
     desk: string;
-    type?: AccountType;
     balance?: number;
     banned?: boolean;
   };
@@ -83,16 +82,16 @@ async function main() {
     { name: "Hasan Razib", office: APARAJITA, floor: "2", desk: "H-1", balance: 0 },
     { name: "Fazle Amin", office: APARAJITA, floor: "3", desk: "H-9", balance: -600 },
     { name: "Zarif Hasan", office: APARAJITA, floor: "3", desk: "H-12", balance: 0 },
-    { name: "Shamim Hossain", office: APARAJITA, floor: "2", desk: "H-3", type: "ONE_TIME", balance: 0 },
+    { name: "Shamim Hossain", office: APARAJITA, floor: "2", desk: "H-3", balance: 0 },
     { name: "Ayesha Siddique", office: APARAJITA, floor: "3", desk: "H-15", balance: -540 },
     { name: "Bayazid Ahmed", office: MEDONA, floor: "7", desk: "M-101", balance: 0 },
     { name: "Khalid Hasan", office: MEDONA, floor: "7", desk: "M-102", balance: -450 },
     { name: "Sajib Das", office: MEDONA, floor: "15", desk: "M-410", balance: 200 },
-    { name: "Wasim Ali", office: MEDONA, floor: "6", desk: "M-77", type: "ONE_TIME", balance: 0 },
+    { name: "Wasim Ali", office: MEDONA, floor: "6", desk: "M-77", balance: 0 },
     { name: "Md. Rasel", office: MEDONA, floor: "7", desk: "M-120", balance: -400 },
     { name: "Mukhlish Habib", office: MEDONA, floor: "6", desk: "M-81", balance: 0 },
     { name: "Adnan Karim", office: OTHERS, floor: "2", desk: "O-4", balance: -250 },
-    { name: "Alo Uddin", office: OTHERS, floor: "3", desk: "O-8", type: "ONE_TIME", balance: 0 },
+    { name: "Alo Uddin", office: OTHERS, floor: "3", desk: "O-8", balance: 0 },
     { name: "Jihadul Islam", office: OTHERS, floor: "3", desk: "O-9", balance: -200 },
     { name: "Rasel Sarker", office: null, floor: "", desk: "", balance: 0 },
     { name: "Banned Example", office: AMBON, floor: "2", desk: "Z-1", balance: 0, banned: true },
@@ -166,7 +165,6 @@ async function main() {
         desk: p.desk || null,
         address: p.office ? `${p.office}${p.floor ? `, floor ${p.floor}` : ""}` : null,
         zoneId: p.office ? offices[p.office] : null,
-        accountType: p.type ?? "REGULAR",
         banned: p.banned ?? false,
         balance: p.balance ?? 0,
         emailVerified: new Date(),

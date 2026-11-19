@@ -266,7 +266,7 @@ export async function distributionOrders(scope: OfficeScope, f: DistributionFilt
       office: { select: { name: true } },
       placedBy: { select: { name: true } },
       items: true,
-      user: { select: { id: true, name: true, employeeId: true, floor: true, desk: true, building: true, accountType: true } },
+      user: { select: { id: true, name: true, employeeId: true, floor: true, desk: true, building: true } },
     },
   });
   // Spec §6.12 delivered sorting: Unpaid first (latest delivered first), then Paid

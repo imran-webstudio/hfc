@@ -14,7 +14,6 @@ export type UserRow = {
   role: "USER" | "SUPER_ADMIN";
   isManager: boolean;
   banned: boolean;
-  accountType: "REGULAR" | "ONE_TIME";
   zoneId: string | null;
   balance: number;
   due: number;
@@ -112,7 +111,10 @@ function UserRowLink({ u }: { u: UserRow }) {
           {initials(u.name)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{u.name}</span>
+          <span className="flex items-center gap-2">
+            <span className="truncate font-semibold">{u.name}</span>
+            {u.role === "SUPER_ADMIN" ? <span className="shrink-0 rounded-full bg-[#5B4CF5]/15 px-2 py-0.5 text-[10px] font-bold text-[#5B4CF5]">Admin</span> : null}
+          </span>
           <span className="block truncate text-xs text-ink-muted">{meta || "No office yet"}</span>
         </span>
         <BalancePill u={u} />

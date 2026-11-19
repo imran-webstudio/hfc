@@ -12,11 +12,6 @@ enum Role {
   SUPER_ADMIN
 }
 
-enum AccountType {
-  REGULAR // wallet: charged after delivery
-  ONE_TIME // cash on delivery
-}
-
 enum Slot {
   LUNCH
   DINNER
@@ -55,7 +50,6 @@ model User {
   image         String?
 
   role        Role        @default(USER)
-  accountType AccountType @default(REGULAR)
   banned      Boolean     @default(false)
 
   // member profile

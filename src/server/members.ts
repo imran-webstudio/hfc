@@ -1,4 +1,4 @@
-import type { AccountType, Prisma } from "@prisma/client";
+import type { Prisma, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { UserError } from "@/lib/action";
 import { sortFloors } from "@/lib/floors";
@@ -74,9 +74,21 @@ export async function assertMemberAccess(actor: Viewer, memberId: string) {
   return member;
 }
 
-export async function setAccountType(actor: Viewer, memberId: string, type: AccountType) {
-  await assertMemberAccess(actor, memberId);
-  await prisma.user.update({ where: { id: memberId }, data: { accountType: type } });
+/**
+ * Change a member's role (Member <-> Admin). Super admins only.
+ * Guards: you cannot change your own role, and the last remaining
+ * admin cannot be demoted — the panel must always keep an admin.
+ */
+export async function setRole(actor: Viewer, memberId: string, role: Role) {
+  if (!actor.isSuperAdmin) throw new UserError("Only an admin can change roles.");
+  if (actor.id === memberId) throw new UserError("You can't change your own role.");
+  const member = await prisma.user.findUnique({ where: { id: memberId }, select: { role: true } });
+  if (!member) throw new UserError("Member not found.");
+  if (member.role === "SUPER_ADMIN" && role === "USER") {
+    const admins = await prisma.user.count({ where: { role: "SUPER_ADMIN", banned: false } });
+    if (admins <= 1) throw new UserError("There must be at least one admin.");
+  }
+  await prisma.user.update({ where: { id: memberId }, data: { role } });
 }
 
 export async function setZone(actor: Viewer, memberId: string, zoneId: string | null) {
@@ -202,6 +214,6 @@ export async function searchMembers(actor: Viewer, q: string, officeId?: string)
     },
     orderBy: { name: "asc" },
     take: 12,
-    select: { id: true, name: true, employeeId: true, floor: true, desk: true, accountType: true },
+    select: { id: true, name: true, employeeId: true, floor: true, desk: true },
   });
 }

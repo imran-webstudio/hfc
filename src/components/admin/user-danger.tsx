@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { banAction, deleteMemberAction, setAccountTypeAction } from "@/actions/admin-users";
+import { banAction, deleteMemberAction } from "@/actions/admin-users";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 
@@ -9,24 +9,18 @@ export function UserDanger({
   memberId,
   name,
   banned,
-  accountType,
   protectedRole,
 }: {
   memberId: string;
   name: string;
   banned: boolean;
-  accountType: "REGULAR" | "ONE_TIME";
   protectedRole: boolean;
 }) {
   const { act, pending } = useAct();
   const [confirm, setConfirm] = useState<"delete" | "ban" | null>(null);
-  const regular = accountType === "REGULAR";
   if (protectedRole) return null;
   return (
     <div className="mt-4 flex flex-wrap gap-2">
-      <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => setAccountTypeAction(memberId, regular ? "ONE_TIME" : "REGULAR"), { success: regular ? "Switched to One-time" : "Switched to Regular" })}>
-        {regular ? "Switch to one-time" : "Switch to regular"}
-      </button>
       <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => (banned ? act(() => banAction(memberId, false), { success: "Member unbanned" }) : setConfirm("ban"))}>
         {banned ? "Unblock" : "Block"}
       </button>

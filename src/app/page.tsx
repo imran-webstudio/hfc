@@ -17,7 +17,6 @@ type DevUser = {
   email: string | null;
   name: string | null;
   role: string;
-  accountType: string;
   managedOffices: { officeId: string }[];
 };
 
@@ -33,14 +32,7 @@ function GoogleMark() {
 }
 
 function devLabel(u: DevUser) {
-  const kind =
-    u.role === "SUPER_ADMIN"
-      ? "SUPER_ADMIN"
-      : u.managedOffices.length
-        ? "Manager"
-        : u.accountType === "REGULAR"
-          ? "Member (Regular)"
-          : "Member (One-time)";
+  const kind = u.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : u.managedOffices.length ? "Manager" : "Member";
   return `${u.name} — ${kind}`;
 }
 
@@ -55,7 +47,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
     ? await prisma.user.findMany({
         where: { banned: false, email: { not: null } },
         orderBy: [{ role: "desc" }, { name: "asc" }],
-        select: { email: true, name: true, role: true, accountType: true, managedOffices: { select: { officeId: true } } },
+        select: { email: true, name: true, role: true, managedOffices: { select: { officeId: true } } },
         take: 60,
       })
     : [];

@@ -98,8 +98,6 @@ await page.fill('input[placeholder="Cash received"]', "Test deposit");
 await page.click('button:has-text("Record")');
 check("deposit recorded", await toast("Recorded"));
 check("balance +250 and ledger row", Number(q(`select balance from "User" where name='Parvez Ahmed'`)) === pBefore + 250 && q(`select count(*) from "LedgerEntry" where note='Test deposit'`) === "1");
-await page.click('button[aria-label="Switch to One-time"]');
-check("switch to one-time", await toast("Switched to One-time"));
 await page.selectOption('select[aria-label^="Assign zone"]', { label: "Others" });
 check("zone assigned", await toast("Zone updated"));
 check("zone persisted", q(`select o.name from "User" u join "Office" o on o.id=u."zoneId" where u.name='Parvez Ahmed'`) === "Others");

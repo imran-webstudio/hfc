@@ -4,6 +4,7 @@ import { ArrowLeft, Phone, User, Wallet } from "lucide-react";
 import { ClearHistory } from "@/components/admin/clear-history";
 import { MemberActions } from "@/components/admin/member-actions";
 import { UserDanger } from "@/components/admin/user-danger";
+import { UserRole } from "@/components/admin/user-role";
 import { ActivityList } from "@/components/member/activity-list";
 import { StatsGrid } from "@/components/member/stats-grid";
 import { Chip, PageTitle } from "@/components/ui/ui";
@@ -46,7 +47,8 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           </div>
           <MemberActions memberId={member.id} name={member.name ?? "member"} phone={member.phone ?? ""} balance={member.balance} />
         </div>
-        <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} accountType={member.accountType} protectedRole={member.role === "SUPER_ADMIN"} />
+        <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} protectedRole={member.role === "SUPER_ADMIN"} />
+        {viewer.isSuperAdmin ? <UserRole memberId={member.id} name={member.name ?? "member"} role={member.role} isSelf={viewer.id === member.id} /> : null}
         {member.role !== "SUPER_ADMIN" ? <ClearHistory memberId={member.id} name={member.name ?? "member"} balance={member.balance} /> : null}
         <p className="mt-3 flex items-center gap-2 text-xs">
           <Phone className="h-3.5 w-3.5 text-ink-muted" />
@@ -60,7 +62,7 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           )}
         </p>
         <div className="mt-2 flex gap-2">
-          <Chip tone="leaf">{member.accountType === "REGULAR" ? "Regular" : "One-time"}</Chip>
+          {member.role === "SUPER_ADMIN" ? <Chip tone="leaf">Admin</Chip> : null}
           {summary.totalDue > 0 ? <Chip tone="red">Due ৳{summary.totalDue.toLocaleString("en-US")}</Chip> : null}
           {member.banned ? <Chip tone="red">Banned</Chip> : null}
         </div>
