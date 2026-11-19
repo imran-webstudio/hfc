@@ -6,7 +6,7 @@ import { Chip, EmptyNote } from "@/components/ui/ui";
 import { cn } from "@/lib/cn";
 import { statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
-import { fmtDateTime, fmtDay } from "@/lib/time";
+import { fmtDateTime, fmtDay, fmtTime } from "@/lib/time";
 import type { ActivityItem } from "@/server/summary";
 
 type Filter = "all" | "orders" | "wallet";
@@ -49,56 +49,67 @@ export function ActivityList({ items, heading }: { items: ActivityItem[]; headin
       {shown.length === 0 ? (
         <EmptyNote>{filter === "wallet" ? "No deposits or wallet entries yet." : filter === "orders" ? "No orders yet." : "No activity yet."}</EmptyNote>
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="space-y-3">
           {shown.map((it) =>
             it.kind === "order" ? (
-              <li key={it.id} className="surface-card flex items-start gap-3.5 rounded-2xl px-4 py-3.5">
-                <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-spice/15 text-spice">
-                  <Receipt className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{it.title}</p>
-                  <ul className="mt-0.5 space-y-0.5">
-                    {it.lines.map((l, idx) => (
-                      <li key={idx} className="text-[11px] text-ink-muted">
-                        {l.title} × {l.quantity} · {statusLabel(l.slot)} · {taka(l.subtotal)}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-[11px] text-ink-muted">
-                    {it.office} · meal day {fmtDay(it.mealDate)}
-                  </p>
-                  <p className="text-[10.5px] text-ink-muted/80">
-                    Ordered {fmtDateTime(it.at)}
-                    {it.placedBy ? ` · by admin ${it.placedBy}` : ""}
-                  </p>
-                  {it.note ? <p className="mt-0.5 text-[11px] text-ink-muted">{it.note}</p> : null}
-                  {it.deliveredAt ? <p className="text-[10.5px] text-ink-muted/80">Delivered {fmtDateTime(it.deliveredAt)}</p> : null}
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <p className="tnum text-sm font-bold">{taka(it.amount)}</p>
-                  <div className="flex flex-wrap justify-end gap-1">
-                    <Chip tone={statusTone(it.status)}>{statusLabel(it.status)}</Chip>
-                    <Chip tone={statusTone(it.paymentStatus)}>{statusLabel(it.paymentStatus)}</Chip>
+              <li key={it.id} className="surface-card rounded-2xl px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-spice/15 text-spice">
+                    <Receipt className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 truncate text-sm font-bold">{it.title}</p>
+                      <p className="tnum shrink-0 text-[15px] font-bold">{taka(it.amount)}</p>
+                    </div>
+                    {it.lines.length > 1 ? (
+                      <ul className="mt-1.5 space-y-1">
+                        {it.lines.map((l, idx) => (
+                          <li key={idx} className="flex items-baseline justify-between gap-3 text-xs text-ink-muted">
+                            <span className="min-w-0 truncate">
+                              {l.title} × {l.quantity} · {statusLabel(l.slot)}
+                            </span>
+                            <span className="tnum shrink-0">{taka(l.subtotal)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <p className="mt-1.5 text-xs text-ink-muted">
+                      {[...new Set(it.lines.map((l) => statusLabel(l.slot)))].join(" + ")} · {it.office} · {fmtDay(it.mealDate)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-muted/80">
+                      Ordered {fmtTime(it.at)}
+                      {it.placedBy ? ` by ${it.placedBy}` : ""}
+                      {it.deliveredAt ? ` · Delivered ${fmtTime(it.deliveredAt)}` : ""}
+                    </p>
+                    {it.note ? <p className="mt-1 text-xs italic text-ink-muted">{it.note}</p> : null}
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <Chip tone={statusTone(it.status)}>{statusLabel(it.status)}</Chip>
+                      <Chip tone={statusTone(it.paymentStatus)}>{statusLabel(it.paymentStatus)}</Chip>
+                    </div>
                   </div>
                 </div>
               </li>
             ) : (
-              <li key={it.id} className="surface-card flex items-start gap-3.5 rounded-2xl px-4 py-3.5">
-                <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-leaf/15 text-leaf">
-                  <ArrowDownLeft className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{LEDGER_TITLE[it.type]}</p>
-                  <p className="text-[11px] text-ink-muted">{it.note ?? "—"}</p>
-                  <p className="text-[10.5px] text-ink-muted/80">
-                    {fmtDateTime(it.at)}
-                    {it.createdBy ? ` · recorded by ${it.createdBy}` : ""}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className={cn("tnum text-sm font-bold", it.amount >= 0 ? "text-leaf-deep" : "text-red-400")}>{signedTaka(it.amount)}</p>
-                  <p className="tnum text-[11px] text-ink-muted">balance {taka(it.balanceAfter)}</p>
+              <li key={it.id} className="surface-card rounded-2xl px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-leaf/15 text-leaf">
+                    <ArrowDownLeft className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 truncate text-sm font-bold">{LEDGER_TITLE[it.type]}</p>
+                      <p className={cn("tnum shrink-0 text-[15px] font-bold", it.amount >= 0 ? "text-leaf-deep" : "text-red-400")}>{signedTaka(it.amount)}</p>
+                    </div>
+                    <div className="mt-1 flex items-baseline justify-between gap-3 text-xs text-ink-muted">
+                      <span className="min-w-0 truncate">{it.note ?? ""}</span>
+                      <span className="tnum shrink-0">balance {taka(it.balanceAfter)}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-ink-muted/80">
+                      {fmtDateTime(it.at)}
+                      {it.createdBy ? ` · recorded by ${it.createdBy}` : ""}
+                    </p>
+                  </div>
                 </div>
               </li>
             ),
