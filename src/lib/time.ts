@@ -82,9 +82,28 @@ export function dayParts(dateStr: string): { day: number; mon: string } {
   return { day: d.getUTCDate(), mon: MONTHS_SHORT[d.getUTCMonth()].toUpperCase() };
 }
 
-/** "10/24/2026, 10:02:10 AM" in Asia/Dhaka */
+function dhakaParts(d: Date | string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dhaka",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(d));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return { day: get("day"), month: get("month"), time: `${get("hour")}:${get("minute")} ${get("dayPeriod").toUpperCase()}` };
+}
+
+/** "24 Oct, 10:02 AM" in Asia/Dhaka */
 export function fmtDateTime(d: Date | string): string {
-  return new Date(d).toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+  const p = dhakaParts(d);
+  return `${p.day} ${p.month}, ${p.time}`;
+}
+
+/** "10:02 AM" in Asia/Dhaka */
+export function fmtTime(d: Date | string): string {
+  return dhakaParts(d).time;
 }
 
 export function isValidHHmm(v: string): boolean {
