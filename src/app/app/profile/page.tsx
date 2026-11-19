@@ -1,4 +1,5 @@
 import { ProfileForm } from "@/components/member/profile-form";
+import { SignOutButton } from "@/components/shell/account";
 import { requireViewer } from "@/lib/session";
 import { listFloors, listOffices } from "@/server/offices";
 
@@ -27,6 +28,13 @@ export default async function ProfilePage() {
           address: viewer.address ?? "",
         }}
       />
+      <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-5">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{viewer.name ?? "Signed in"}</p>
+          <p className="truncate text-xs text-ink-muted">{viewer.email}</p>
+        </div>
+        <SignOutButton />
+      </div>
     </div>
   );
 }

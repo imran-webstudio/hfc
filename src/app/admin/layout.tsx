@@ -19,14 +19,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </Link>
         <AdminSideNav showTeam={viewer.isSuperAdmin} />
         <div className="mt-auto space-y-3 border-t border-line pt-4">
-          <div className="flex items-center justify-between gap-2 px-1">
+          <div className="px-1">
             <AccountFigure userId={viewer.id} name={viewer.name ?? "Admin"} align="left" />
-            <form action={signOutAction}>
-              <button type="submit" aria-label="Sign out" className="icon-btn">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
           </div>
+          <form action={signOutAction}>
+            <button type="submit" className="flex h-9 w-full items-center gap-2 rounded-xl px-2 text-xs font-medium text-ink-muted hover:bg-ink/5 hover:text-ink">
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </form>
           <Link href="/app" className="block px-2 text-xs font-medium text-ink-muted hover:text-ink">
             Ordering app
           </Link>
