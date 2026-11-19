@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreditCard } from "lucide-react";
+import { CreditCard, ShieldCheck } from "lucide-react";
 import { MemberPhoneNav, MemberSideNav } from "@/components/shell/member-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { OfflineBanner } from "@/components/ui/offline-banner";
@@ -35,14 +35,22 @@ export default async function MemberLayout({ children }: { children: React.React
           <Link href="/app" className="text-xl font-black tracking-tight">
             HFC
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            {viewer.isStaff ? (
+              <Link href="/admin" className="inline-flex items-center gap-1.5 rounded-full bg-[#5B4CF5] px-3 py-2 text-xs font-bold text-white shadow-sm">
+                <ShieldCheck className="h-4 w-4" />
+                Admin
+              </Link>
+            ) : null}
+            <ThemeToggle />
+          </div>
         </header>
         <main className="px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-2 lg:px-8 lg:pb-12 lg:pt-8">
           <OfflineBanner />
           {children}
         </main>
       </div>
-      <MemberPhoneNav />
+      <MemberPhoneNav showAdmin={viewer.isStaff} />
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
+import { ClipboardList, LayoutGrid, LogOut, Settings2, Users, UtensilsCrossed } from "lucide-react";
+import { signOutAction } from "@/actions/auth";
 import { OrderSearchButton } from "@/components/admin/filters";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -108,6 +109,11 @@ export function AdminPhoneBar({ firstName }: { firstName: string }) {
             {firstName.slice(0, 1).toUpperCase()}
           </span>
         ) : null}
+        <form action={signOutAction}>
+          <button type="submit" aria-label="Sign out" className="icon-btn">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </form>
         <ThemeToggle />
       </div>
     </header>

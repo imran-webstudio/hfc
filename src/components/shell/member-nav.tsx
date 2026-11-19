@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, ShoppingBag, User, Wallet } from "lucide-react";
+import { ClipboardList, ShieldCheck, ShoppingBag, User, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
@@ -35,20 +35,22 @@ export function MemberSideNav({ showAdmin }: { showAdmin: boolean }) {
       })}
       {showAdmin ? (
         <Link href="/admin" className="flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-medium text-ink-muted hover:bg-ink/5 hover:text-ink">
-          Admin
+          <ShieldCheck className="h-[18px] w-[18px]" />
+          Admin panel
         </Link>
       ) : null}
     </nav>
   );
 }
 
-export function MemberPhoneNav() {
+export function MemberPhoneNav({ showAdmin }: { showAdmin: boolean }) {
   const pathname = usePathname();
   if (pathname === "/app") return null;
   const items = [
     { href: "/app", label: "Order" },
     { href: "/app/orders", label: "Orders" },
     { href: "/app/profile", label: "Profile" },
+    ...(showAdmin ? [{ href: "/admin", label: "Admin" }] : []),
   ];
   return (
     <nav className="fixed inset-x-0 z-40 mx-auto flex w-[min(100%-1.25rem,440px)] items-stretch justify-around rounded-full bg-[#0B0B0F] px-2 py-2 text-white lg:hidden" style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
