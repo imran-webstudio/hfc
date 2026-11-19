@@ -24,7 +24,7 @@ export function SignOutButton() {
     <form action={signOutAction}>
       <button type="submit" className="btn btn-ghost btn-sm gap-1.5">
         <LogOut className="h-3.5 w-3.5" />
-        Out
+        Sign out
       </button>
     </form>
   );
