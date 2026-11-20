@@ -9,7 +9,7 @@ export default async function TeamPage() {
   const offices = await listOfficesWithManagers();
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 hidden text-3xl font-semibold tracking-tight lg:block">Team</h1>
+      <h1 className="mb-4 text-3xl font-semibold tracking-tight">Team</h1>
       <p className="mb-6 text-sm text-ink-muted">Create offices, set cutoffs, and assign managers who can run each location.</p>
       <NewLocationForm />
       <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-ink-muted">Locations</h2>

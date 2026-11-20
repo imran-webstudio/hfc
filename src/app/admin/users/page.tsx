@@ -32,8 +32,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     banned: m.banned,
     zoneId: m.zoneId,
     balance: m.balance,
-    // Balance already includes every valid order's bill (billed at creation), so Due is
-    // simply the negative part of the balance — unpaid orders must not be added again.
+    // Due is simply the negative part of the balance (bills land at delivery;
+    // pending orders are not part of the balance yet).
     due: Math.max(0, -m.balance),
     employeeId: m.employeeId,
     officeName: m.zone?.name ?? null,
@@ -42,17 +42,13 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 hidden text-3xl font-semibold tracking-tight lg:block lg:text-4xl">Users & deposits</h1>
+      <h1 className="mb-4 text-3xl font-semibold tracking-tight lg:text-4xl">Users & deposits</h1>
       <UsersBoard
         rows={rows}
-        search={
+        controls={
+          // Control stack in the user's order: Office, Floor, Search, Balance.
           <Suspense>
-            <FilterSearch bare param="q" label="Search" value={q} placeholder="Name or employee ID" className="w-full" />
-          </Suspense>
-        }
-        filters={
-          <Suspense>
-            <>
+            <div className="space-y-2">
               <FilterSelect
                 bare
                 param="zone"
@@ -65,6 +61,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 ]}
               />
               <FilterSelect bare param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
+              <FilterSearch bare param="q" label="Search" value={q} placeholder="Job ID, name or mobile number" className="w-full" />
               <FilterSelect
                 bare
                 param="balance"
@@ -76,7 +73,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                   { value: "credit", label: "With credit" },
                 ]}
               />
-            </>
+            </div>
           </Suspense>
         }
       />

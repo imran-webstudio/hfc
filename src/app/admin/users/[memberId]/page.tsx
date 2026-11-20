@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Phone, User, Wallet } from "lucide-react";
 import { ClearHistory } from "@/components/admin/clear-history";
 import { MemberActions } from "@/components/admin/member-actions";
+import { MemberDeposit } from "@/components/admin/member-deposit";
 import { UserDanger } from "@/components/admin/user-danger";
 import { UserRole } from "@/components/admin/user-role";
 import { ActivityList } from "@/components/member/activity-list";
@@ -47,6 +48,7 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           </div>
           <MemberActions memberId={member.id} name={member.name ?? "member"} phone={member.phone ?? ""} balance={member.balance} />
         </div>
+        {!member.banned ? <MemberDeposit memberId={member.id} name={member.name ?? "member"} /> : null}
         <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} protectedRole={member.role === "SUPER_ADMIN"} />
         {viewer.isSuperAdmin ? <UserRole memberId={member.id} name={member.name ?? "member"} role={member.role} isSelf={viewer.id === member.id} /> : null}
         {member.role !== "SUPER_ADMIN" ? <ClearHistory memberId={member.id} name={member.name ?? "member"} balance={member.balance} /> : null}

@@ -8,21 +8,20 @@ export function OrdersTabs({ orders, filters, action }: { orders: BoardOrder[]; 
   const [tab, setTab] = useState<"PENDING" | "DELIVERED">("PENDING");
   const pending = orders.filter((o) => o.status === "PENDING");
   const delivered = orders.filter((o) => o.status === "DELIVERED");
-  const cancelled = orders.filter((o) => o.status === "CANCELLED");
+  // Cancelled orders are deliberately NOT listed here — they live on the
+  // customer's account page (full history) instead.
   const shown = tab === "PENDING" ? pending : delivered;
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="order-2 grid grid-cols-2 gap-2 rounded-full bg-rice p-1 ring-1 ring-line sm:flex sm:w-fit lg:order-1">
-          <Tab on={tab === "PENDING"} onClick={() => setTab("PENDING")}>
-            Pending {pending.length}
-          </Tab>
-          <Tab on={tab === "DELIVERED"} onClick={() => setTab("DELIVERED")} soft>
-            Delivered {delivered.length}
-          </Tab>
-        </div>
-        {filters ? <div className="order-1 flex flex-wrap items-center gap-2 lg:order-2 lg:justify-end">{filters}</div> : null}
+      {filters ? <div className="mb-3">{filters}</div> : null}
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-full bg-rice p-1 ring-1 ring-line sm:flex sm:w-fit">
+        <Tab on={tab === "PENDING"} onClick={() => setTab("PENDING")}>
+          Pending {pending.length}
+        </Tab>
+        <Tab on={tab === "DELIVERED"} onClick={() => setTab("DELIVERED")} soft>
+          Delivered {delivered.length}
+        </Tab>
       </div>
       {action ? <div className="mb-4">{action}</div> : null}
 
@@ -37,17 +36,6 @@ export function OrdersTabs({ orders, filters, action }: { orders: BoardOrder[]; 
           ))}
         </ul>
       )}
-
-      {cancelled.length > 0 ? (
-        <div className="mt-6">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">Cancelled</p>
-          <ul className="space-y-3">
-            {cancelled.map((o) => (
-              <OrderCard key={o.id} o={o} />
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 }

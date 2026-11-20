@@ -36,8 +36,8 @@ export type ActivityItem =
  * Spec §9 summary, in spec order:
  *   Current Balance = Total Deposit − Total Bill
  *   Meals Ordered   = total quantity across valid (non-cancelled) orders
- *   Total Bill      = sum of grand totals of valid orders (each counted once,
- *                     regardless of payment status)
+ *   Total Bill      = sum of grand totals of valid BILLED orders (an order bills
+ *                     at delivery — a pending order counts toward nothing yet)
  *   Total Deposit   = account deposits (DEPOSIT + legacy DUE_PAYMENT) + Cash Paid
  *                     order amounts (CASH_PAYMENT ledger) + ADJUSTMENT corrections
  * ORDER_BILL ledger rows are the bill side of the ledger, not deposits, and are
@@ -73,7 +73,7 @@ export async function getMemberSummary(userId: string): Promise<MemberSummary> {
   ]);
 
   const live = orders.filter((o) => o.status !== "CANCELLED");
-  const totalBill = live.reduce((s, o) => s + o.amount, 0);
+  const totalBill = live.filter((o) => o.billedAt).reduce((s, o) => s + o.amount, 0);
   const totalDeposit = ledger.filter((l) => DEPOSIT_TYPES.includes(l.type)).reduce((s, l) => s + l.amount, 0);
   const mealsOrdered = live.reduce((s, o) => s + o.items.reduce((q, i) => q + i.quantity, 0), 0);
 

@@ -30,6 +30,7 @@ export function memberWhere(scope: OfficeScope, f: MemberFilters): Prisma.UserWh
         { name: { contains: q, mode: "insensitive" } },
         { email: { contains: q, mode: "insensitive" } },
         { employeeId: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
         { desk: { contains: q, mode: "insensitive" } },
       ],
     });

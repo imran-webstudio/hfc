@@ -1,3 +1,4 @@
+import type { Slot } from "@prisma/client";
 import { MenuStudio } from "@/components/admin/menu-studio";
 import { prisma } from "@/lib/prisma";
 import { officeScope, requireStaff } from "@/lib/session";
@@ -7,9 +8,15 @@ import { listOffices } from "@/server/offices";
 
 export const metadata = { title: "Menu" };
 
-export default async function AdminMenuPage({ searchParams }: { searchParams: Promise<{ office?: string }> }) {
+export default async function AdminMenuPage({ searchParams }: { searchParams: Promise<{ office?: string; day?: string; slot?: string }> }) {
   const viewer = await requireStaff();
   const sp = await searchParams;
+  // Deep link from the member home ("+ Add Menu" on an empty slot): preselect the
+  // weekday and open the add form for that Lunch/Dinner slot directly.
+  const dayNum = sp.day !== undefined && /^\d+$/.test(sp.day) ? Number(sp.day) : NaN;
+  const initialDay = dayNum >= 0 && dayNum <= 6 ? dayNum : undefined;
+  const initialSlot: Slot | undefined = sp.slot === "LUNCH" || sp.slot === "DINNER" ? (sp.slot as Slot) : undefined;
+  const initialAdd = initialDay !== undefined && initialSlot ? { weekday: initialDay, slot: initialSlot } : null;
   const scope = officeScope(viewer);
   const offices = (await listOffices({ scope })).filter((o) => o.active);
   const officeIds = await fanOutOfficeIds(scope);
@@ -37,12 +44,16 @@ export default async function AdminMenuPage({ searchParams }: { searchParams: Pr
   const outSet = new Set(stockOutRows.map((s) => `${s.option.groupId}|${s.date}`));
 
   return (
-    <MenuStudio
+    <>
+      <h1 className="mb-4 text-3xl font-semibold tracking-tight lg:text-4xl">Menu</h1>
+      <MenuStudio
       offices={offices.map((o) => ({ id: o.id, name: o.name, lunchCutoff: o.lunchCutoff, dinnerCutoff: o.dinnerCutoff }))}
       initialOfficeId={selected}
       today={today}
       todayWeekday={weekdayOf(today)}
       weekDates={dates}
+      initialDay={initialDay}
+      initialAdd={initialAdd}
       dishes={dishes.map((d) => ({
         id: d.id,
         weekday: d.weekday ?? 0,
@@ -55,6 +66,7 @@ export default async function AdminMenuPage({ searchParams }: { searchParams: Pr
         ordered: orderedById.get(d.id) ?? 0,
         stockedOut: outSet.has(`${d.groupId}|${dates[d.weekday ?? 0]}`),
       }))}
-    />
+      />
+    </>
   );
 }

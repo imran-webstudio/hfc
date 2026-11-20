@@ -2,7 +2,7 @@ import { OrderFood, type FoodSlot } from "@/components/member/slot-menu";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/session";
-import { WEEKDAYS_LONG, addDays, hhmmToMinutes, isDateStr, minutesNow, todayStr, weekdayOf } from "@/lib/time";
+import { WEEKDAYS_LONG, addDays, fmtFullDate, hhmmToMinutes, isDateStr, minutesNow, todayStr, weekdayOf } from "@/lib/time";
 import { optionsForDate } from "@/server/menu";
 import { isDayOff, slotState } from "@/server/orders";
 
@@ -33,7 +33,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const mine = await prisma.order.findMany({
     where: { userId: viewer.id, mealDate: date, status: { not: "CANCELLED" } },
     orderBy: { createdAt: "desc" },
-    include: { items: true },
+    include: { items: { include: { option: { select: { imageUrl: true } } } } },
   });
 
   const slots: FoodSlot[] = (["LUNCH", "DINNER"] as const)
@@ -57,9 +57,25 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     id: o.id,
     title: o.items.map((i) => i.title).join(", ") || "Order",
     quantity: o.items.reduce((q, i) => q + i.quantity, 0),
+    itemCount: o.items.length,
     amount: o.amount,
     status: o.status,
+    paymentStatus: o.paymentStatus,
+    imageUrl: o.items[0]?.option?.imageUrl ?? null,
   }));
 
-  return <OrderFood dayName={WEEKDAYS_LONG[weekdayOf(date)]} date={date} place={place} balance={viewer.balance} slots={slots} existing={existing} />;
+  return (
+    <OrderFood
+      dayName={WEEKDAYS_LONG[weekdayOf(date)]}
+      fullDate={fmtFullDate(date)}
+      isToday={date === today}
+      weekday={weekdayOf(date)}
+      isStaff={viewer.isStaff}
+      date={date}
+      place={place}
+      balance={viewer.balance}
+      slots={slots}
+      existing={existing}
+    />
+  );
 }

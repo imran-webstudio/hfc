@@ -1,46 +1,48 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, UtensilsCrossed } from "lucide-react";
 import { signOutAction } from "@/actions/auth";
-import { AccountFigure } from "@/components/shell/account";
-import { AdminPhoneBar, AdminSideNav, AdminTabBar } from "@/components/shell/admin-nav";
+import { AdminTabBar, AdminTopNav } from "@/components/shell/admin-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { requireStaff } from "@/lib/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const viewer = await requireStaff();
-  const first = (viewer.name ?? "there").split(" ")[0];
   return (
-    <div className="min-h-screen lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-sidebar px-3 py-5 lg:flex">
-        <Link href="/admin" className="mb-6 px-3">
-          <span className="block text-lg font-semibold tracking-tight">HFC</span>
-          <span className="block text-[11px] font-medium text-ink-muted">Home Flavour Catering</span>
-        </Link>
-        <AdminSideNav showTeam={viewer.isSuperAdmin} />
-        <div className="mt-auto space-y-3 border-t border-line pt-4">
-          <div className="px-1">
-            <AccountFigure userId={viewer.id} name={viewer.name ?? "Admin"} align="left" />
-          </div>
-          <form action={signOutAction}>
-            <button type="submit" className="flex h-9 w-full items-center gap-2 rounded-xl px-2 text-xs font-medium text-ink-muted hover:bg-ink/5 hover:text-ink">
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-          </form>
-          <Link href="/app" className="block px-2 text-xs font-medium text-ink-muted hover:text-ink">
-            Ordering app
+    <div className="min-h-screen">
+      {/* Top header on every admin page: logo + HFC / HomeFlavour Catering on the
+          left, the section nav in the middle, account actions on the right. */}
+      <header className="sticky top-0 z-40 border-b border-line bg-rice/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-3 px-4 py-2.5 lg:px-8">
+          <Link href="/admin" className="flex shrink-0 items-center gap-2.5">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#5B4CF5] text-white shadow-sm">
+              <UtensilsCrossed className="h-5 w-5" />
+            </span>
+            <span>
+              <span className="block text-[19px] font-extrabold leading-none tracking-tight">HFC</span>
+              <span className="mt-0.5 block text-[10.5px] font-medium leading-none text-ink-muted">HomeFlavour Catering</span>
+            </span>
           </Link>
-          <ThemeToggle labeled />
+          <div className="flex flex-1 justify-center">
+            <AdminTopNav showTeam={viewer.isSuperAdmin} />
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link href="/app" className="mr-1 hidden text-xs font-semibold text-ink-muted hover:text-ink xl:block">
+              Ordering app
+            </Link>
+            <ThemeToggle />
+            <form action={signOutAction}>
+              <button type="submit" aria-label="Sign out" title="Sign out" className="icon-btn">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
         </div>
-      </aside>
-      <div className="min-w-0 flex-1">
-        <AdminPhoneBar firstName={first} />
-        <main className="px-4 pb-[calc(12rem+env(safe-area-inset-bottom))] pt-1 lg:px-8 lg:pb-12 lg:pt-8">
-          <OfflineBanner />
-          {children}
-        </main>
-      </div>
+      </header>
+      <main className="px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 lg:px-8 lg:pb-12 lg:pt-8">
+        <OfflineBanner />
+        {children}
+      </main>
       <AdminTabBar />
     </div>
   );

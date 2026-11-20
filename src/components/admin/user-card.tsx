@@ -42,7 +42,7 @@ function avatar(name: string, banned: boolean) {
   return AVATARS[n];
 }
 
-export function UsersBoard({ rows, search, filters }: { rows: UserRow[]; search?: React.ReactNode; filters?: React.ReactNode }) {
+export function UsersBoard({ rows, controls }: { rows: UserRow[]; controls?: React.ReactNode }) {
   const [dueOnly, setDueOnly] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const due = rows.reduce((s, r) => s + Math.max(0, -r.balance), 0);
@@ -68,10 +68,9 @@ export function UsersBoard({ rows, search, filters }: { rows: UserRow[]; search?
         </button>
       </div>
 
-      {search ? <div className="mb-3">{search}</div> : null}
+      {controls ? <div className="mb-3">{controls}</div> : null}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {filters}
         <button
           type="button"
           onClick={() => setDueOnly((v) => !v)}

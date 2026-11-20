@@ -1,14 +1,32 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { MapPin, Minus, Plus, UtensilsCrossed, X } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  Banknote,
+  CalendarDays,
+  Check,
+  CircleAlert,
+  Clock,
+  History,
+  MapPin,
+  Minus,
+  Moon,
+  Plus,
+  Sun,
+  UtensilsCrossed,
+  Wallet,
+  X,
+} from "lucide-react";
 import { cancelOrderAction, placeOrderAction } from "@/actions/member";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
 import { statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
-import { todayStr } from "@/lib/time";
+import { WEEKDAYS_SHORT } from "@/lib/time";
 
 export type MenuItem = {
   id: string;
@@ -19,7 +37,16 @@ export type MenuItem = {
   /** Availability ONLY — no numeric stock ever reaches the member UI (spec §5/§14.3). */
   available: boolean;
 };
-export type ExistingOrder = { id: string; title: string; quantity: number; amount: number; status: string };
+export type ExistingOrder = {
+  id: string;
+  title: string;
+  quantity: number;
+  itemCount: number;
+  amount: number;
+  status: string;
+  paymentStatus: string;
+  imageUrl: string | null;
+};
 
 export type FoodSlot = {
   slot: "LUNCH" | "DINNER";
@@ -85,12 +112,152 @@ function Stepper({
   );
 }
 
-function StockOutPill() {
-  return <span className="inline-block rounded-full bg-ink/10 px-3 py-1.5 text-[13px] font-semibold text-ink-muted dark:bg-white/10">Stock Out</span>;
+/** Shown instead of the quantity selector when a dish's stock has run out. */
+function UnavailablePill() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/[0.06] px-4 py-2 text-sm font-semibold text-ink-muted dark:bg-white/10">
+      <Ban size={15} />
+      Unavailable
+    </span>
+  );
+}
+
+const PILL = "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold";
+
+function DeliveryPill({ status }: { status: string }) {
+  if (status === "DELIVERED")
+    return (
+      <span className={`${PILL} bg-[#E7F7EE] text-[#1E9E5A] dark:bg-[#0F2A1D] dark:text-[#4ADE80]`}>
+        <Check size={13} strokeWidth={3} />
+        Delivered
+      </span>
+    );
+  if (status === "PENDING")
+    return (
+      <span className={`${PILL} bg-[#FFF6E0] text-[#B97E0C] dark:bg-[#2A2108] dark:text-[#FFD54D]`}>
+        <Clock size={13} strokeWidth={2.6} />
+        Pending
+      </span>
+    );
+  return <span className={`${PILL} bg-ink/[0.06] text-ink-muted dark:bg-white/10`}>{statusLabel(status)}</span>;
+}
+
+function PaymentPill({ status }: { status: string }) {
+  if (status === "CASH_PAID")
+    return (
+      <span className={`${PILL} bg-[#E7F7EE] text-[#1E9E5A] dark:bg-[#0F2A1D] dark:text-[#4ADE80]`}>
+        <Banknote size={13} />
+        Cash Paid
+      </span>
+    );
+  if (status === "WALLET_CHARGED")
+    return (
+      <span className={`${PILL} bg-[#5B4CF5]/10 text-[#5B4CF5] dark:bg-[#5B4CF5]/20 dark:text-[#C8C2FF]`}>
+        <Wallet size={13} />
+        Wallet Charge
+      </span>
+    );
+  return (
+    <span className={`${PILL} bg-[#FFF3E0] text-[#E8890C] dark:bg-[#2A1E08] dark:text-[#FFB74D]`}>
+      <CircleAlert size={13} />
+      Unpaid
+    </span>
+  );
+}
+
+/** Short label for a closed slot's header pill (the full reason sits under it). */
+function closedShort(reason?: string) {
+  if (!reason) return "Closed";
+  if (reason.includes("off")) return "Catering Off";
+  if (reason.includes("not offered")) return "Not Offered";
+  if (reason.includes("not active")) return "Inactive";
+  if (reason.includes("office in Profile")) return "No Office";
+  return "Closed";
+}
+
+function SlotBox({
+  s,
+  weekday,
+  isStaff,
+  cart,
+  setQty,
+}: {
+  s: FoodSlot;
+  weekday: number;
+  isStaff: boolean;
+  cart: Record<string, number>;
+  setQty: (id: string, qty: number) => void;
+}) {
+  const name = s.slot === "LUNCH" ? "Lunch" : "Dinner";
+  const Icon = s.slot === "LUNCH" ? Sun : Moon;
+  const hasMenu = s.items.length > 0;
+  return (
+    <section className="rounded-[1.6rem] border border-line bg-rice p-4 shadow-[var(--hfc-card-shadow)] sm:p-5">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Icon className="h-6 w-6 text-[#5B4CF5]" strokeWidth={2.2} />
+        <h2 className="text-[22px] font-extrabold tracking-tight">{name}</h2>
+        <span className="ml-auto">
+          {!hasMenu ? (
+            <span className={`${PILL} bg-[#FDECEC] text-[12px] text-[#E03131] dark:bg-[#2B1216] dark:text-[#FF7A7A]`}>
+              <Ban size={13} />
+              No Menu
+            </span>
+          ) : s.open && s.closesLabel ? (
+            <span className={`${PILL} bg-[#E7F7EE] text-[12px] text-[#1E9E5A] dark:bg-[#0F2A1D] dark:text-[#4ADE80]`}>
+              <Clock size={13} strokeWidth={2.6} />
+              {s.closesLabel}
+            </span>
+          ) : !s.open ? (
+            <span className={`${PILL} bg-ink/[0.06] text-[12px] text-ink-muted dark:bg-white/10`}>{closedShort(s.reason)}</span>
+          ) : null}
+        </span>
+      </div>
+      {/* Cutoff/closed information only exists when a menu is set (per design rule). */}
+      {hasMenu && !s.open && s.reason ? <p className="mt-1.5 text-sm text-ink-muted">{s.reason}</p> : null}
+
+      {!hasMenu ? (
+        <div className="py-5 text-center">
+          <p className="text-[15px] text-ink-muted">No {name.toLowerCase()} menu added yet.</p>
+          {isStaff ? (
+            <Link
+              href={`/admin/menu?day=${weekday}&slot=${s.slot}`}
+              className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border-2 border-[#5B4CF5]/50 px-5 py-2 text-[15px] font-bold text-[#5B4CF5] transition hover:bg-[#5B4CF5]/5"
+            >
+              <Plus size={17} strokeWidth={2.6} />
+              Add {name} Menu
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <ul className="mt-4 grid grid-cols-2 gap-3 lg:gap-4">
+          {s.items.map((it) => {
+            const qty = cart[it.id] ?? 0;
+            return (
+              <li key={it.id} className="rounded-[1.25rem] border border-line/70 p-2.5">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-[0.9rem] bg-[#E7E7E4] dark:bg-[#14141C]">
+                  <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
+                  {!it.available ? (
+                    <span className="absolute right-2 top-2 rounded-full bg-[#E03131] px-2.5 py-1 text-[11px] font-bold text-white shadow">Stock Out</span>
+                  ) : null}
+                </div>
+                <p className="mt-2.5 line-clamp-2 text-[16px] font-bold leading-snug">{it.title}</p>
+                <p className="tnum mt-0.5 text-[15px] font-extrabold text-[#5B4CF5]">{taka(it.price)}</p>
+                <div className="mt-2">{!it.available ? <UnavailablePill /> : <Stepper qty={qty} disabled={!s.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}</div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 export function OrderFood({
   dayName,
+  fullDate,
+  isToday,
+  weekday,
+  isStaff,
   date,
   place,
   balance,
@@ -98,6 +265,10 @@ export function OrderFood({
   existing,
 }: {
   dayName: string;
+  fullDate: string;
+  isToday: boolean;
+  weekday: number;
+  isStaff: boolean;
   date: string;
   place: string;
   balance: number;
@@ -129,97 +300,70 @@ export function OrderFood({
 
   if (!slots.length) return <EmptyMenu />;
 
-  const isToday = date === todayStr();
-  // The card at the top features the slot a member would order from right now:
-  // the first open slot with dishes, else the first slot that has any.
-  const featured = slots.find((s) => s.open && s.items.length > 0) ?? slots.find((s) => s.items.length > 0) ?? slots[0];
-  const featuredName = featured.slot === "LUNCH" ? "Lunch" : "Dinner";
-
   return (
     <div className="pb-24 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:pb-0">
       <div>
-        <section className="rounded-[1.6rem] border border-line bg-rice p-4 shadow-[var(--hfc-card-shadow)] sm:p-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[26px] font-extrabold tracking-tight">{isToday ? "Today's Meal" : `${dayName}'s Meal`}</h1>
-            {featured.closesLabel ? <span className="rounded-full bg-[#5B4CF5] px-3 py-1 text-xs font-semibold text-white">{featured.closesLabel}</span> : null}
-          </div>
-          <p className="mt-1 text-[15px] text-ink-muted">
-            {dayName} • {featuredName}
-            {!featured.open && featured.reason ? ` · ${featured.reason}` : ""}
+        <div className="px-0.5">
+          <h1 className="text-[26px] font-extrabold tracking-tight">{isToday ? "Today's Meal" : `${dayName}'s Meal`}</h1>
+          <p className="mt-1 flex items-center gap-1.5 text-[15px] text-ink-muted">
+            <CalendarDays size={16} className="text-[#5B4CF5]" />
+            {dayName} • {fullDate}
           </p>
-          {featured.items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-ink-muted">No {featuredName.toLowerCase()} menu added yet.</p>
-          ) : (
-            <ul className="mt-4 grid grid-cols-2 gap-3 lg:gap-4">
-              {featured.items.map((it) => {
-                const qty = cart[it.id] ?? 0;
-                return (
-                  <li key={it.id}>
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#E7E7E4] dark:bg-[#14141C]">
-                      <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
-                    </div>
-                    <p className="mt-2.5 line-clamp-2 text-[17px] font-bold leading-snug">{it.title}</p>
-                    <p className="tnum mt-0.5 text-[15px] text-ink-muted">{taka(it.price)}</p>
-                    <div className="mt-2">
-                      {!it.available ? <StockOutPill /> : <Stepper qty={qty} disabled={!featured.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        {slots
-          .filter((s) => s.slot !== featured.slot)
-          .map((s) => {
-            const name = s.slot === "LUNCH" ? "Lunch" : "Dinner";
-          return (
-            <section key={s.slot} className="mt-7">
-              <div className="mb-3 flex flex-wrap items-center gap-3 px-0.5">
-                <h2 className="text-xl font-extrabold tracking-tight">{name}</h2>
-                {s.closesLabel ? <span className="rounded-full bg-[#5B4CF5]/10 px-2.5 py-1 text-[11px] font-semibold text-[#5B4CF5]">{s.closesLabel}</span> : null}
-                {!s.open && s.reason ? <span className="text-sm text-ink-muted">{s.reason}</span> : null}
-              </div>
-              {s.items.length === 0 ? (
-                <p className="px-0.5 text-[15px] text-ink-muted">No {name.toLowerCase()} menu added yet.</p>
-              ) : (
-                <ul className="space-y-2.5">
-                  {s.items.map((it) => {
-                    const qty = cart[it.id] ?? 0;
-                    return (
-                      <li key={it.id} className="flex items-center gap-3 rounded-[1.1rem] border border-line bg-rice px-3 py-2.5">
-                        <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-[13px] bg-[#E7E7E4] dark:bg-[#14141C]">
-                          <DishPhoto src={it.imageUrl} alt="" compact sizes="58px" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-base font-bold">{it.title}</p>
-                          <p className="tnum text-sm text-ink-muted">{taka(it.price)}</p>
-                        </div>
-                        {!it.available ? <StockOutPill /> : <Stepper qty={qty} disabled={!s.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-
-        {existing.map((o) => (
-          <div key={o.id} className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-rice px-4 py-3">
-            <p className="text-sm">
-              <span className="font-semibold">{o.title}</span>
-              <span className="text-ink-muted"> ×{o.quantity}</span>
-              <span className="ml-2 text-xs text-ink-muted">{statusLabel(o.status)}</span>
+          {place ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
+              <MapPin size={13} />
+              {place}
             </p>
-            {o.status === "PENDING" ? (
-              <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => act(() => cancelOrderAction(o.id), { success: "Order cancelled" })}>
-                Cancel
-              </button>
-            ) : null}
-          </div>
-        ))}
+          ) : null}
+        </div>
+
+        <div className="mt-5 space-y-5">
+          {slots.map((s) => (
+            <SlotBox key={s.slot} s={s} weekday={weekday} isStaff={isStaff} cart={cart} setQty={setQty} />
+          ))}
+        </div>
+
+        {existing.length > 0 ? (
+          <section className="mt-8">
+            <div className="mb-3 flex items-center gap-2 px-0.5">
+              <History className="h-5 w-5 text-[#5B4CF5]" />
+              <h2 className="text-lg font-extrabold tracking-tight">Recently Ordered</h2>
+              <Link href="/app/orders" className="ml-auto inline-flex items-center gap-1 text-sm font-bold text-[#5B4CF5]">
+                View All
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+            <ul className="space-y-2.5">
+              {existing.map((o) => (
+                <li key={o.id} className="flex items-center gap-3 rounded-[1.25rem] border border-line bg-rice p-3">
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#E7E7E4] dark:bg-[#14141C]">
+                    <DishPhoto src={o.imageUrl} alt="" compact sizes="56px" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-bold">{o.itemCount === 1 ? `${o.title} × ${o.quantity}` : o.title}</p>
+                    <p className="mt-0.5 whitespace-nowrap text-xs text-ink-muted">
+                      Order #{o.id.slice(-6).toUpperCase()} • {WEEKDAYS_SHORT[weekday]}
+                    </p>
+                    <p className="tnum mt-0.5 text-[15px] font-extrabold text-[#5B4CF5]">{taka(o.amount)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <DeliveryPill status={o.status} />
+                    <PaymentPill status={o.paymentStatus} />
+                    {o.status === "PENDING" ? (
+                      <button
+                        className="text-xs font-semibold text-[#E03131] disabled:opacity-50"
+                        disabled={pending}
+                        onClick={() => act(() => cancelOrderAction(o.id), { success: "Order cancelled" })}
+                      >
+                        Cancel order
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
 
       <aside className="mt-6 hidden rounded-[1.6rem] border border-line bg-rice p-5 shadow-[var(--hfc-card-shadow)] lg:block">
@@ -258,7 +402,7 @@ export function OrderFood({
           </div>
           {lines.length ? (
             <div className="flex justify-between text-[#E03131]">
-              <span>Balance after order</span>
+              <span>Balance after delivery</span>
               <span className="tnum">{signedTaka(after)}</span>
             </div>
           ) : null}
@@ -277,7 +421,7 @@ export function OrderFood({
           <span className="min-w-0 flex-1 truncate text-sm">
             {lines.length} item{lines.length > 1 ? "s" : ""} · <span className="tnum">{taka(total)}</span>
           </span>
-          <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">Balance after {signedTaka(after)}</span>
+          <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">After delivery {signedTaka(after)}</span>
           <button className="btn cta h-10 shrink-0 rounded-full px-3 text-sm" disabled={pending} onClick={placeOrder}>
             Place order
           </button>

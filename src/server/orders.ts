@@ -58,20 +58,25 @@ type LoadedItem = { option: MenuOption & { office: Office }; quantity: number; s
  * ACCOUNTING INVARIANT (spec §9/§17) — read before touching this file.
  *
  *   Stored balance === Total Deposit − Total Bill, at every instant.
- *   Total Bill    = sum of `amount` over the member's valid (non-cancelled) orders.
+ *   Total Bill    = sum of `amount` over the member's BILLED orders (see below).
  *   Total Deposit = account deposits (DEPOSIT/DUE_PAYMENT ledger) + CASH_PAYMENT ledger
  *                   (+ ADJUSTMENT corrections from Edit Balance).
  *
- * To make that hold continuously, an order is billed AT CREATION: the order transaction
- * writes an ORDER_BILL ledger entry of −amount (ORDER_BILL never counts as a deposit).
- * Payment is then purely a settlement of that already-counted bill:
- *   - Wallet Charge: status only (+paidAt). No ledger movement, no deposit (§17.1).
- *   - Cash Paid: a CASH_PAYMENT ledger entry of +amount raises Total Deposit, offsetting
- *     the already-counted bill — net balance effect of the payment itself is +amount,
- *     matching §17.4 row 2 (deposit 500→700, bill 300→500, balance stays +200).
- * Cancelling / deleting / editing a valid order writes the reverse ORDER_BILL delta in
- * the same transaction, so the invariant survives those too. Delivery changes neither
- * balance nor payment status (spec §6.8).
+ * Billing happens AT DELIVERY, never at order creation:
+ *   - A new order is Pending/Unpaid and moves NO money: balance, Total Deposit and
+ *     Total Bill are all unchanged until the food is delivered.
+ *   - Mark Delivered writes the ORDER_BILL ledger entry of −amount in the same
+ *     transaction and stamps `billedAt` on the order. Total Bill rises, the balance
+ *     drops (due grows). Payment status stays Unpaid.
+ *   - Payment is then a settlement of that counted bill, on delivered orders only:
+ *       · Cash Paid: a CASH_PAYMENT entry of +amount raises Total Deposit. The bill
+ *         is NOT added a second time.
+ *       · Wallet Charge: status only (+paidAt). No ledger movement, no deposit, no
+ *         second bill (§17.1). Allowed with insufficient balance — it may go negative.
+ * `billedAt` is the single source of truth for "this order has been billed". Orders
+ * created before this rule were billed at creation; migration 0005 backfilled their
+ * `billedAt`, so delivery/cancel/edit/delete check the flag and never double-bill
+ * or reverse a bill that does not exist.
  */
 
 /** Load + validate a multi-item set, merging duplicate dishes. All-or-nothing. */
@@ -104,7 +109,6 @@ async function createOrderWithItems(
     items: LoadedItem[];
     note?: string | null;
     placedById?: string | null;
-    billNote: string;
   },
 ) {
   for (const it of args.items) await lockGroupStock(tx, it.option.groupId, args.date);
@@ -131,8 +135,8 @@ async function createOrderWithItems(
     },
     include: { items: true },
   });
-  // Bill at creation — see the accounting invariant above.
-  await applyLedger(tx, { userId: args.userId, type: "ORDER_BILL", amount: -amount, note: args.billNote, createdById: args.placedById });
+  // No ledger entry here: an order bills at delivery, not at creation (see the
+  // accounting invariant above). Balance, Total Deposit and Total Bill are unchanged.
   return order;
 }
 
@@ -159,7 +163,6 @@ export async function placeMemberOrder(viewer: Viewer, input: { items: OrderItem
         officeId: viewer.zoneId!,
         date: input.date,
         items,
-        billNote: `Order · ${input.date}`,
       }),
     { isolationLevel: "Serializable" },
   );
@@ -187,7 +190,6 @@ export async function placeAdminOrder(
         items,
         note: input.note?.trim() || "Phone Order",
         placedById: actor.id,
-        billNote: `Order · ${input.date}`,
       }),
     { isolationLevel: "Serializable" },
   );
@@ -202,14 +204,20 @@ async function loadOrderFor(actor: Viewer, orderId: string, mode: "staff" | "own
   return { order, isStaffHere };
 }
 
-/** Reverse an order's bill (cancel/delete). Cash-paid orders also reverse their deposit. */
+/**
+ * Reverse an order's bill (cancel/delete) — but only if it was ever billed.
+ * Pending orders are normally unbilled (billing happens at delivery), so for them
+ * this is a no-op; orders billed under the pre-delivery-billing rule carry
+ * `billedAt` and are reversed. Cash-paid orders also reverse their deposit.
+ */
 async function reverseBill(
   tx: Prisma.TransactionClient,
   actor: Viewer,
-  order: { id: string; userId: string; amount: number; paymentStatus: string; status: string },
+  order: { id: string; userId: string; amount: number; paymentStatus: string; status: string; billedAt: Date | null },
   note: string,
 ) {
   if (order.status === "CANCELLED") return; // bill was already reversed when it was cancelled
+  if (!order.billedAt) return; // never billed — nothing to reverse
   await applyLedger(tx, { userId: order.userId, type: "ORDER_BILL", amount: order.amount, note, createdById: actor.id });
   if (order.paymentStatus === "CASH_PAID") {
     await applyLedger(tx, { userId: order.userId, type: "CASH_PAYMENT", amount: -order.amount, note: `Reversal · ${note}`, createdById: actor.id });
@@ -230,7 +238,7 @@ export async function cancelOrder(actor: Viewer, orderId: string) {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.order.updateMany({
       where: { id: orderId, status: "PENDING" },
-      data: { status: "CANCELLED", cancelledAt: new Date() },
+      data: { status: "CANCELLED", cancelledAt: new Date(), billedAt: null },
     });
     if (claimed.count === 0) throw new UserError("That order was already updated.");
     await reverseBill(tx, actor, order, "Order cancelled");
@@ -239,8 +247,10 @@ export async function cancelOrder(actor: Viewer, orderId: string) {
 
 /**
  * Edit an order's items (spec §6.7): add/remove meals, change quantities.
- * Stock is re-validated globally (excluding this order's own current items) and the
- * bill delta is written as an ORDER_BILL adjustment in the same transaction.
+ * Stock is re-validated globally (excluding this order's own current items). If the
+ * order is already billed (delivered), the bill delta is written as an ORDER_BILL
+ * adjustment in the same transaction; a pending order is unbilled, so editing it
+ * moves no money — it will bill at delivery for its new total.
  * Design choice: only UNPAID orders can be edited. A paid/charged order is settled —
  * editing it would silently rewrite a completed payment — so staff delete and
  * re-create it instead. Delivered-but-unpaid orders may still be edited.
@@ -270,7 +280,7 @@ export async function editOrder(actor: Viewer, orderId: string, input: { items: 
       });
       await tx.order.update({ where: { id: orderId }, data: { amount: newAmount } });
       const delta = newAmount - order.amount;
-      if (delta !== 0) {
+      if (delta !== 0 && order.billedAt) {
         await applyLedger(tx, { userId: order.userId, type: "ORDER_BILL", amount: -delta, note: "Order edited", createdById: actor.id });
       }
       return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
@@ -279,15 +289,27 @@ export async function editOrder(actor: Viewer, orderId: string, input: { items: 
   );
 }
 
-/** Delivery only (spec §6.8): status + deliveredAt. Never charges, never pays. */
+/**
+ * Mark Delivered: status + deliveredAt, AND the billing moment. The order's grand
+ * total joins Total Bill now (ORDER_BILL −amount, balance drops, due grows) while
+ * the payment status stays Unpaid — payment is a separate, later action. Orders
+ * billed under the old bill-at-creation rule already carry `billedAt` and are
+ * never billed twice.
+ */
 export async function markDelivered(actor: Viewer, orderId: string) {
   const { order } = await loadOrderFor(actor, orderId, "staff");
   if (order.status !== "PENDING") throw new UserError("That order isn't pending.");
-  const claimed = await prisma.order.updateMany({
-    where: { id: orderId, status: "PENDING" },
-    data: { status: "DELIVERED", deliveredAt: new Date() },
+  await prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const claimed = await tx.order.updateMany({
+      where: { id: orderId, status: "PENDING" },
+      data: { status: "DELIVERED", deliveredAt: now, ...(order.billedAt ? {} : { billedAt: now }) },
+    });
+    if (claimed.count === 0) throw new UserError("That order was already updated.");
+    if (!order.billedAt) {
+      await applyLedger(tx, { userId: order.userId, type: "ORDER_BILL", amount: -order.amount, note: `Order · ${order.mealDate}`, createdById: actor.id });
+    }
   });
-  if (claimed.count === 0) throw new UserError("That order was already updated.");
 }
 
 /**
@@ -319,7 +341,7 @@ export async function markWalletCharged(actor: Viewer, orderId: string) {
       data: { paymentStatus: "WALLET_CHARGED", paidAt: new Date() },
     });
     if (claimed.count === 0) throw new UserError("This order is already paid.");
-    // No ledger movement: the bill was already counted at order creation (see invariant
+    // No ledger movement: the bill was already counted at delivery (see invariant
     // above), and a wallet charge is NOT a deposit (spec §17.1). Balance may be negative.
     await writeAudit(tx, { actorId: actor.id, memberId: order.userId, action: "WALLET_CHARGE", detail: `Order ${orderId}`, amount: order.amount });
   });

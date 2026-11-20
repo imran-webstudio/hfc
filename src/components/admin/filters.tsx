@@ -37,7 +37,7 @@ export function FilterSelect({
   return (
     <div className={className}>
       <label className={bare ? "sr-only" : "field-label"} htmlFor={`f-${param}`}>{label}</label>
-      <select id={`f-${param}`} className={bare ? "h-11 rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink" : "input"} value={value} onChange={(e) => set(param, e.target.value)}>
+      <select id={`f-${param}`} className={bare ? "h-11 w-full rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink" : "input"} value={value} onChange={(e) => set(param, e.target.value)}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -51,7 +51,7 @@ export function FilterDate({ param, label, value, className, bare = false }: { p
   return (
     <div className={className}>
       <label className={bare ? "sr-only" : "field-label"} htmlFor={`f-${param}`}>{label}</label>
-      <input id={`f-${param}`} type="date" className={bare ? "h-11 rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink" : "input"} value={value} onChange={(e) => e.target.value && set(param, e.target.value)} />
+      <input id={`f-${param}`} type="date" className={bare ? "h-11 w-full rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink" : "input"} value={value} onChange={(e) => e.target.value && set(param, e.target.value)} />
     </div>
   );
 }

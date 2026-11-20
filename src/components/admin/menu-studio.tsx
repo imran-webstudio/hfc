@@ -41,6 +41,8 @@ export function MenuStudio({
   today,
   todayWeekday,
   weekDates,
+  initialDay,
+  initialAdd,
 }: {
   offices: Office[];
   initialOfficeId: string;
@@ -48,10 +50,14 @@ export function MenuStudio({
   today: string;
   todayWeekday: number;
   weekDates: Record<number, string>;
+  /** Deep link from the member home's "+ Add Menu" button: preselect the day… */
+  initialDay?: number;
+  /** …and open the add-dish form straight away for this weekday + slot. */
+  initialAdd?: { weekday: number; slot: Slot } | null;
 }) {
   const { act, pending } = useAct();
-  const [day, setDay] = useState(todayWeekday);
-  const [add, setAdd] = useState<AddState | null>(null);
+  const [day, setDay] = useState(initialDay ?? todayWeekday);
+  const [add, setAdd] = useState<AddState | null>(initialAdd ? { ...initialAdd, draft: emptyDraft() } : null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [front, setFront] = useState<"add" | "edit">("add");
   const [removeId, setRemoveId] = useState<string | null>(null);
@@ -288,11 +294,11 @@ function CutoffCard({ offices, initialId }: { offices: Office[]; initialId: stri
       <div className="flex flex-wrap items-end gap-3">
         <label className="block w-36" htmlFor="cutoff-lunch">
           <span className="field-label">Lunch cutoff</span>
-          <input id="cutoff-lunch" name="lunchCutoff" autoComplete="off" className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="10:30" value={lunch} onChange={(e) => setLunch(e.target.value)} />
+          <input id="cutoff-lunch" name="lunchCutoff" type="time" autoComplete="off" className="input tnum" required value={lunch} onChange={(e) => setLunch(e.target.value)} />
         </label>
         <label className="block w-36" htmlFor="cutoff-dinner">
           <span className="field-label">Dinner cutoff</span>
-          <input id="cutoff-dinner" name="dinnerCutoff" autoComplete="off" className="input tnum" inputMode="numeric" required pattern="([01]\d|2[0-3]):[0-5]\d" placeholder="16:00" value={dinner} onChange={(e) => setDinner(e.target.value)} />
+          <input id="cutoff-dinner" name="dinnerCutoff" type="time" autoComplete="off" className="input tnum" required value={dinner} onChange={(e) => setDinner(e.target.value)} />
         </label>
         <button type="submit" className="btn btn-primary" disabled={!dirty || pending}>
           Save

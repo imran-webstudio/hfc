@@ -232,6 +232,7 @@ model Order {
   placedById    String? // set when an admin placed the order for the member
   createdAt     DateTime      @default(now())
   deliveredAt   DateTime?
+  billedAt      DateTime? // set when the ORDER_BILL ledger entry is written (at delivery)
   cancelledAt   DateTime?
   paidAt        DateTime? // set by the Cash Paid / Wallet Charge action on a delivered order
 

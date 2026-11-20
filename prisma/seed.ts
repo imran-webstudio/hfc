@@ -303,6 +303,7 @@ async function main() {
         placedById: h.phone ? catering.id : null,
         createdAt: at(-h.ago, 10, 2 + (h.ago % 50), 10),
         deliveredAt: h.cancelled ? null : at(-h.ago, 13, 31, 20),
+        billedAt: h.cancelled ? null : at(-h.ago, 13, 31, 20),
         paidAt: h.cancelled ? null : at(-h.ago, 13, 31, 20),
         cancelledAt: h.cancelled ? at(-h.ago, 11, 5) : null,
         items: {
@@ -312,7 +313,8 @@ async function main() {
     });
   }
   // Ledger under the spec invariant (balance = Total Deposit − Total Bill): every live
-  // order bills at creation (ORDER_BILL −amount); the two payments are plain DEPOSITs.
+  // order here is delivered, so each has an ORDER_BILL (−amount, written at delivery);
+  // the two payments are plain DEPOSITs.
   // Events are applied oldest-first so balanceAfter is chronologically correct, ending
   // at −2030 + 970 + 760 = −300, matching Imran's stored balance.
   {
@@ -356,6 +358,7 @@ async function main() {
         placedById: note === "Phone order" ? catering.id : null,
         createdAt: at(off, 9, 15),
         deliveredAt: status === "DELIVERED" ? at(off, 13, 5) : null,
+        billedAt: status === "DELIVERED" ? at(off, 13, 5) : null,
         paidAt: status === "DELIVERED" && pay !== "UNPAID" ? at(off, 13, 5) : null,
         cancelledAt: status === "CANCELLED" ? at(off, 9, 40) : null,
         items: {
@@ -363,8 +366,9 @@ async function main() {
         },
       },
     });
-    // Keep the member's ledger consistent with the invariant: bill at creation, and a
-    // CASH_PAYMENT deposit record when the seeded order is already cash-paid.
+    // Keep the member's ledger consistent with the invariant: an order bills at
+    // DELIVERY (pending orders move no money), and a CASH_PAYMENT deposit record is
+    // written when the seeded order is already cash-paid.
     const seedLedger = async (type: LedgerType, amt: number, noteText: string, when: Date) => {
       const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { balance: true } });
       const balanceAfter = fresh.balance + amt;
@@ -373,8 +377,8 @@ async function main() {
         data: { userId: user.id, type, amount: amt, balanceAfter, note: noteText, createdById: catering.id, createdAt: when },
       });
     };
-    if (status !== "CANCELLED") {
-      await seedLedger("ORDER_BILL", -amount, `Order · ${opt.title}`, at(off, 9, 15));
+    if (status === "DELIVERED") {
+      await seedLedger("ORDER_BILL", -amount, `Order · ${opt.title}`, at(off, 13, 5));
       if (pay === "CASH_PAID") await seedLedger("CASH_PAYMENT", amount, "Cash paid · order", at(off, 13, 5));
     }
   };

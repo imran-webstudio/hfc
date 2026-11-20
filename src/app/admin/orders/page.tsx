@@ -47,34 +47,36 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         : null,
   }));
 
+  // Filter stack, in the order the user asked for: Office + Floor on one line,
+  // the date filter full-width on the next line, then search full-width.
   const filters = (
-    <>
-      <FilterSelect
-        bare
-        param="office"
-        label="Office"
-        value={office}
-        options={[{ value: "all", label: "All offices" }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
-      />
-      <FilterSelect
-        bare
-        param="floor"
-        label="Floor"
-        value={floor}
-        options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: `F${f}` }))]}
-      />
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <FilterSelect
+          bare
+          param="office"
+          label="Office"
+          value={office}
+          options={[{ value: "all", label: "All offices" }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
+        />
+        <FilterSelect
+          bare
+          param="floor"
+          label="Floor"
+          value={floor}
+          options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: `F${f}` }))]}
+        />
+      </div>
       <FilterDate bare param="date" label="Date" value={date} />
-    </>
+      <Suspense>
+        <FilterSearch bare param="q" label="Search" value={q} placeholder="Search orders" className="w-full" />
+      </Suspense>
+    </div>
   );
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-4 hidden items-center justify-between gap-4 lg:flex">
-        <h1 className="text-4xl font-semibold tracking-tight">Orders</h1>
-        <Suspense>
-          <FilterSearch param="q" label="Search" value={q} placeholder="Search orders" bare className="w-72" />
-        </Suspense>
-      </div>
+      <h1 className="mb-4 text-3xl font-semibold tracking-tight lg:text-4xl">Orders</h1>
 
       <Suspense>
         <OrdersTabs

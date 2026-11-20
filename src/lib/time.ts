@@ -12,6 +12,13 @@ export const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thurs
 /** Weekly grid order used by the app (Sat → Fri). */
 export const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5] as const;
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "20 November 2026" */
+export function fmtFullDate(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
 
 export function toDhaka(now: Date = new Date()): Date {
   return new Date(now.getTime() + DHAKA_OFFSET_MS);
