@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, UtensilsCrossed } from "lucide-react";
+import { LogOut, Smartphone, UtensilsCrossed } from "lucide-react";
 import { signOutAction } from "@/actions/auth";
 import { AdminTabBar, AdminTopNav } from "@/components/shell/admin-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -27,8 +27,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminTopNav showTeam={viewer.isSuperAdmin} />
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            <Link href="/app" className="mr-1 hidden text-xs font-semibold text-ink-muted hover:text-ink xl:block">
-              Ordering app
+            <Link href="/app" className="btn btn-ghost btn-sm mr-1" aria-label="Go to the ordering app" title="Ordering app">
+              <Smartphone className="h-4 w-4" />
+              <span className="hidden sm:inline">Ordering app</span>
             </Link>
             <ThemeToggle />
             <form action={signOutAction}>
