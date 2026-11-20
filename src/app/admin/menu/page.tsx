@@ -1,7 +1,8 @@
 import { MenuStudio } from "@/components/admin/menu-studio";
+import { prisma } from "@/lib/prisma";
 import { officeScope, requireStaff } from "@/lib/session";
 import { todayStr, weekOf, weekdayOf } from "@/lib/time";
-import { fanOutOfficeIds, sharedWeeklyMenu } from "@/server/menu";
+import { fanOutOfficeIds, orderedQtyByOption, sharedWeeklyMenu } from "@/server/menu";
 import { listOffices } from "@/server/offices";
 
 export const metadata = { title: "Menu" };
@@ -16,6 +17,24 @@ export default async function AdminMenuPage({ searchParams }: { searchParams: Pr
   const today = todayStr();
   const dishes = await sharedWeeklyMenu(officeIds, selected || undefined);
   const dates = weekOf(today);
+
+  // Stock picture for the studio: for each weekday, the group-global ordered
+  // quantity on that weekday's date this week, plus any manual stock-outs.
+  const orderedById = new Map<string, number>();
+  for (const wd of [...new Set(dishes.map((d) => d.weekday ?? 0))]) {
+    const date = dates[wd];
+    if (!date) continue;
+    const m = await orderedQtyByOption(
+      dishes.filter((d) => (d.weekday ?? 0) === wd).map((d) => d.id),
+      date,
+    );
+    for (const [k, v] of m) orderedById.set(k, v);
+  }
+  const stockOutRows = await prisma.stockOut.findMany({
+    where: { date: { in: Object.values(dates) } },
+    select: { date: true, option: { select: { groupId: true } } },
+  });
+  const outSet = new Set(stockOutRows.map((s) => `${s.option.groupId}|${s.date}`));
 
   return (
     <MenuStudio
@@ -33,6 +52,8 @@ export default async function AdminMenuPage({ searchParams }: { searchParams: Pr
         price: d.price,
         maxQuantity: d.maxQuantity,
         imageUrl: d.imageUrl,
+        ordered: orderedById.get(d.id) ?? 0,
+        stockedOut: outSet.has(`${d.groupId}|${dates[d.weekday ?? 0]}`),
       }))}
     />
   );

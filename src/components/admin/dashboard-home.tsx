@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Banknote, Check, ChevronDown, ShoppingBag, TrendingUp, Users, Wallet } from "lucide-react";
+import { Banknote, Check, CheckCircle2, ChevronDown, ChevronRight, Clock, Package, ShoppingBag, TrendingUp, UserMinus, Users, Wallet } from "lucide-react";
 import { resumeCateringAction, setDayOffRangeAction } from "@/actions/admin-team";
 import { useQueryParam } from "@/components/admin/filters";
 import { useAct } from "@/components/ui/use-act";
@@ -72,7 +73,6 @@ export function DashboardHome({
 }) {
   const setParam = useQueryParam();
   const [dayOffOpen, setDayOffOpen] = useState(false);
-  const total = stats.pending + stats.delivered;
   const cutoffLine = `Lunch cutoff ${lunchCutoff} · Dinner cutoff ${dinnerCutoff}${
     office === "all" ? " (All offices: earliest cutoff shown)" : ""
   }`;
@@ -81,11 +81,6 @@ export function DashboardHome({
   const openTitle = `Catering is open — meal day ${fmtDay(date)}`;
   const offTitle = partial ? `Catering is partly off — ${offToday} of ${officeCount} offices` : `Catering is off — ${range}`;
   const subtitle = closed || partial ? note || "Members cannot place orders while catering is off." : cutoffLine;
-
-  const byTitle = new Map<string, number>();
-  for (const row of stats.pack) byTitle.set(row.title, (byTitle.get(row.title) ?? 0) + row.portions);
-  const bars = [...byTitle.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const barMax = bars[0]?.[1] || 1;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -120,60 +115,24 @@ export function DashboardHome({
         </p>
       </div>
 
+      <h2 className="mb-3 mt-2 text-[22px] font-extrabold tracking-tight">Today&apos;s Overview</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <article className="relative col-span-2 flex min-h-[168px] items-center justify-between overflow-hidden rounded-3xl bg-[#5B4CF5] p-5 text-white lg:col-span-1">
-          <div>
-            <p className="text-sm font-medium text-white/80">Pending to deliver</p>
-            <p className="mt-1 text-4xl font-semibold tracking-tight lg:hidden">
-              {stats.pending} of {total}
-            </p>
-            <p className="mt-1 hidden text-5xl font-semibold tracking-tight lg:block">{stats.pending}</p>
-            <p className="mt-3 text-sm text-white/80 lg:hidden">Track today&apos;s delivery progress</p>
-            <p className="mt-3 hidden text-sm text-white/80 lg:block">
-              {stats.delivered} of {total} delivered
-            </p>
-          </div>
-          <ProgressRing delivered={stats.delivered} total={total} />
-        </article>
-
-        <article className="flex min-h-[168px] flex-col justify-between rounded-3xl bg-[#0B0B0F] p-5 text-white dark:bg-[#14141C] dark:ring-1 dark:ring-white/10">
-          <p className="text-sm font-medium text-white/70">Portions to pack</p>
-          <p className="text-4xl font-semibold tracking-tight">{stats.portions}</p>
-          {bars.length ? (
-            <ul className="mt-3 hidden space-y-1.5 lg:block">
-              {bars.map(([title, n]) => (
-                <li key={title} className="grid grid-cols-[1fr_auto] items-center gap-2 text-xs">
-                  <span className="truncate text-white/80">{title}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-16 overflow-hidden rounded-full bg-white/15">
-                      <span className="block h-full rounded-full bg-[#D4FF3A]" style={{ width: `${Math.max(8, (n / barMax) * 100)}%` }} />
-                    </span>
-                    <span className="tnum w-5 text-right">{n}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </article>
-
-        <article className="flex min-h-[168px] flex-col justify-between rounded-3xl bg-[#D4FF3A] p-5 text-[#0B0B0F]">
-          <p className="text-sm font-medium">Outstanding due</p>
-          <div>
-            <p className="tnum text-4xl font-semibold tracking-tight">{taka(stats.outstandingDue)}</p>
-            <p className="mt-1 text-sm lg:hidden">({stats.usersWithDue} users)</p>
-            <p className="mt-1 hidden text-sm lg:block">{stats.usersWithDue} users with due</p>
-          </div>
-        </article>
+        <StatTile label="Today's Orders" value={stats.todaysOrders} icon={<ShoppingBag className="h-[23px] w-[23px]" />} className="bg-[#5B4CF5] text-white" labelClass="text-white/85" />
+        <StatTile label="Portions to Pack" value={stats.portions} icon={<Package className="h-[23px] w-[23px]" />} className="bg-[#0B0B0F] text-white dark:bg-[#1D1D22]" labelClass="text-white/70" />
+        <StatTile label="Delivered" value={stats.delivered} icon={<CheckCircle2 className="h-[23px] w-[23px]" />} className="bg-[#E4F5E4]" labelClass="text-[#2E7D32]" valueClass="text-[#1E9E4A]" iconClass="text-[#1E9E4A]" />
+        <StatTile label="Pending" value={stats.pending} icon={<Clock className="h-[23px] w-[23px]" />} className="bg-[#FBF0DC]" labelClass="text-[#B57E1E]" valueClass="text-[#D9930D]" iconClass="text-[#D9930D]" />
+        <StatTile label="Total Cash Paid" value={taka(stats.cashPaid)} icon={<Banknote className="h-[23px] w-[23px]" />} className="bg-[#F2F2F4]" labelClass="text-[#55565C]" valueClass="text-[#111114]" iconClass="text-[#55565C]" />
+        <StatTile label="Total Sale" value={taka(stats.totalSales)} icon={<TrendingUp className="h-[23px] w-[23px]" />} className="bg-[#5B4CF5] text-white" labelClass="text-white/85" />
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 lg:grid-cols-6">
-        <Tile className="hidden lg:flex" label="Today's orders" value={stats.todaysOrders} icon={<ShoppingBag className="h-4 w-4" />} />
-        <Tile label="Delivered" value={stats.delivered} icon={<Check className="h-4 w-4" />} />
-        <Tile label="Total sale" value={taka(stats.totalSales)} icon={<TrendingUp className="h-4 w-4" />} />
-        <Tile label="Cash paid" value={taka(stats.cashPaid)} icon={<Banknote className="h-4 w-4" />} />
-        <Tile label="Credit balance" value={taka(stats.creditBalance)} icon={<Wallet className="h-4 w-4" />} />
-        <Tile label="Active users" value={stats.activeUsers} icon={<Users className="h-4 w-4" />} />
+      <h2 className="mb-3 mt-7 text-[22px] font-extrabold tracking-tight">Account Overview</h2>
+      <div className="space-y-3">
+        <AccountRow href="/admin/users" label="Active Users" value={stats.activeUsers} icon={<Users className="h-[22px] w-[22px] text-white/60" />} className="bg-[#0B0B0F] text-white dark:bg-[#141417] dark:ring-1 dark:ring-white/10" chevronClass="text-white/35" />
+        <AccountRow href="/admin/users?balance=due" label="Users with Due" value={stats.usersWithDue} icon={<UserMinus className="h-[22px] w-[22px] text-[#FF7A7A]" />} className="bg-[#0B0B0F] text-white dark:bg-[#141417] dark:ring-1 dark:ring-white/10" chevronClass="text-white/35" />
+        <AccountRow href="/admin/users?balance=due" label="Outstanding Due" value={taka(stats.outstandingDue)} icon={<Wallet className="h-[22px] w-[22px] text-[#E03131]" />} className="bg-[#FDECEC]" labelClass="text-[#16161A]" valueClass="text-[#E03131]" chevronClass="text-[#C9A0A0]" />
+        <AccountRow href="/admin/users?balance=credit" label="Credit Balance" value={taka(stats.creditBalance)} icon={<Wallet className="h-[22px] w-[22px] text-[#1E9E4A]" />} className="bg-[#E4F5E4]" labelClass="text-[#16161A]" valueClass="text-[#1E9E4A]" chevronClass="text-[#8FBF96]" />
       </div>
+      <p className="mt-2 text-xs text-ink-muted">Tap any card above to open that customer list.</p>
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold">Pack by item</h2>
@@ -192,45 +151,62 @@ export function DashboardHome({
   );
 }
 
-function Tile({ label, value, icon, className }: { label: string; value: string | number; icon: ReactNode; className?: string }) {
+function StatTile({
+  label,
+  value,
+  icon,
+  className,
+  labelClass,
+  valueClass,
+  iconClass,
+}: {
+  label: string;
+  value: string | number;
+  icon: ReactNode;
+  className?: string;
+  labelClass?: string;
+  valueClass?: string;
+  iconClass?: string;
+}) {
   return (
-    <div className={cn("surface-card flex min-w-0 flex-col justify-between rounded-2xl px-3 py-3 sm:px-4", className)}>
-      <div className="flex items-center justify-between gap-2 text-xs font-medium text-ink-muted">
-        {label}
-        {icon}
-      </div>
-      <p className="tnum mt-3 text-xl font-semibold">{value}</p>
-    </div>
+    <article className={cn("flex min-h-[132px] flex-col rounded-[1.25rem] p-4", className)}>
+      <p className={cn("text-[15px] font-semibold", labelClass)}>{label}</p>
+      <p className={cn("tnum mt-2 text-[38px] font-extrabold leading-none tracking-tight", valueClass)}>{value}</p>
+      <span className={cn("mt-auto pt-3", iconClass)}>{icon}</span>
+    </article>
   );
 }
 
-function ProgressRing({ delivered, total }: { delivered: number; total: number }) {
-  const r = 34;
-  const c = 2 * Math.PI * r;
-  const pct = total === 0 ? 0 : delivered / total;
-  const dash = c * pct;
+function AccountRow({
+  href,
+  label,
+  value,
+  icon,
+  className,
+  labelClass,
+  valueClass,
+  chevronClass,
+}: {
+  href: string;
+  label: string;
+  value: string | number;
+  icon: ReactNode;
+  className?: string;
+  labelClass?: string;
+  valueClass?: string;
+  chevronClass?: string;
+}) {
   return (
-    <div className="relative grid h-24 w-24 shrink-0 place-items-center" aria-hidden>
-      <svg viewBox="0 0 84 84" className="h-24 w-24 -rotate-90">
-        <circle cx="42" cy="42" r={r} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="8" />
-        <circle
-          cx="42"
-          cy="42"
-          r={r}
-          fill="none"
-          stroke="#D4FF3A"
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${c - dash}`}
-        />
-      </svg>
-      <div className="absolute text-center leading-tight">
-        <p className="tnum text-sm font-semibold">
-          {delivered}/{total}
-        </p>
-        <p className="text-[10px] text-white/80">delivered</p>
-      </div>
-    </div>
+    <Link href={href} className={cn("flex items-center rounded-[1.25rem] px-[18px] py-4", className)}>
+      <span>
+        <span className={cn("block text-[17px] font-semibold", labelClass)}>{label}</span>
+        <span className={cn("tnum mt-1 block text-[33px] font-extrabold leading-none tracking-tight", valueClass)}>{value}</span>
+      </span>
+      <span className="ml-auto flex flex-col items-end gap-3">
+        {icon}
+        <ChevronRight className={cn("h-5 w-5", chevronClass)} />
+      </span>
+    </Link>
   );
 }
 

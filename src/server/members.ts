@@ -12,13 +12,17 @@ export function memberScopeWhere(scope: OfficeScope): Prisma.UserWhereInput {
   return scope ? { OR: [{ zoneId: { in: scope } }, { zoneId: null }] } : {};
 }
 
-export type MemberFilters = { zone?: string; floor?: string; q?: string };
+export type MemberFilters = { zone?: string; floor?: string; q?: string; balance?: string };
 
 export function memberWhere(scope: OfficeScope, f: MemberFilters): Prisma.UserWhereInput {
   const and: Prisma.UserWhereInput[] = [memberScopeWhere(scope)];
   if (f.zone === "none") and.push({ zoneId: null });
   else if (f.zone && f.zone !== "all") and.push({ zoneId: f.zone });
   if (f.floor && f.floor !== "all") and.push({ floor: f.floor });
+  // Balance = Total Deposit − Total Bill: negative means the member owes (due),
+  // positive means the house owes them (credit). Zero is neither.
+  if (f.balance === "due") and.push({ balance: { lt: 0 } });
+  else if (f.balance === "credit") and.push({ balance: { gt: 0 } });
   const q = f.q?.trim();
   if (q) {
     and.push({

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Slot } from "@prisma/client";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { addWeeklyOptionAction, removeOptionAction, saveCutoffsAction, updateOptionAction } from "@/actions/admin-menu";
 import { PhotoField } from "@/components/admin/photo-field";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
 import { taka } from "@/lib/money";
-import { fmtShort, WEEK_ORDER, WEEKDAYS_LONG } from "@/lib/time";
+import { fmtShort, WEEK_ORDER, WEEKDAYS_LONG, WEEKDAYS_SHORT } from "@/lib/time";
 
 export type WeekDish = {
   id: string;
@@ -20,6 +20,10 @@ export type WeekDish = {
   price: number;
   maxQuantity: number | null;
   imageUrl: string | null;
+  /** Portions already ordered for this weekday's date this week (global pool). */
+  ordered: number;
+  /** Manually stocked out for this weekday's date this week. */
+  stockedOut: boolean;
 };
 
 type Office = { id: string; name: string; lunchCutoff: string; dinnerCutoff: string };
@@ -46,6 +50,7 @@ export function MenuStudio({
   weekDates: Record<number, string>;
 }) {
   const { act, pending } = useAct();
+  const [day, setDay] = useState(todayWeekday);
   const [add, setAdd] = useState<AddState | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [front, setFront] = useState<"add" | "edit">("add");
@@ -76,58 +81,94 @@ export function MenuStudio({
       <h1 className="hidden text-3xl font-semibold tracking-tight lg:block">Menu</h1>
       <CutoffCard offices={offices} initialId={initialOfficeId} />
 
-      <section>
-        <h2 className="text-lg font-semibold">Weekly schedule</h2>
-        <p className="mb-3 text-xs text-ink-muted">Same menu at every location · repeats every week · today is highlighted</p>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {WEEK_ORDER.map((wd) => {
-            const isToday = wd === todayWeekday;
-            const date = weekDates[wd];
-            return (
-              <article
-                key={wd}
-                className={cn(
-                  "rounded-3xl border bg-rice p-4",
-                  isToday ? "border-[#5B4CF5] bg-[var(--hfc-today)] ring-2 ring-[#5B4CF5]/20" : "border-line",
-                )}
-              >
-                <header className="mb-3 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="font-semibold">{WEEKDAYS_LONG[wd]}</p>
-                    <p className="text-xs text-ink-muted">{date ? fmtShort(date) : ""}</p>
-                  </div>
-                  {isToday ? <span className="rounded-full bg-[#5B4CF5] px-2.5 py-1 text-[11px] font-semibold text-white">Today</span> : null}
-                </header>
-                {(["LUNCH", "DINNER"] as const).map((slot) => {
-                  const items = dishes.filter((d) => d.weekday === wd && d.slot === slot);
-                  return (
-                    <div key={slot} className="mb-3 last:mb-0">
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{slot === "LUNCH" ? "Lunch" : "Dinner"}</p>
-                      <ul>
-                        {items.map((dish) => (
-                          <li key={dish.id} className="flex items-center gap-1 border-b border-line last:border-0">
-                            <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 py-2 text-left" onClick={() => openEdit(dish)}>
-                              <span className="truncate font-medium">{dish.title}</span>
-                              <span className="tnum shrink-0 text-sm text-ink-muted">{taka(dish.price)}</span>
-                            </button>
-                            <button type="button" className="icon-btn danger" aria-label={`Delete ${dish.title}`} onClick={() => setRemoveId(dish.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                      <button type="button" className="mt-1 flex h-11 w-full items-center justify-center gap-1 text-sm font-semibold text-primary" onClick={() => openAdd(wd, slot)}>
-                        <Plus className="h-4 w-4" /> Add option
-                      </button>
-                    </div>
-                  );
-                })}
-              </article>
-            );
-          })}
+      <section className="rounded-3xl border border-line bg-rice p-4 sm:p-5">
+        <header className="flex items-center justify-between gap-2">
+          <h2 className="text-[22px] font-extrabold tracking-tight">Weekly Menu</h2>
+          <span className="rounded-full bg-[#E4F5E4] px-3 py-1.5 text-[13px] font-bold text-[#1E9E4A] dark:bg-[#0E2A1A] dark:text-[#3DD68C]">Recurring</span>
+        </header>
+        <div className="mt-4 grid grid-cols-4 gap-2.5" role="tablist" aria-label="Weekday">
+          {WEEK_ORDER.map((wd) => (
+            <button
+              key={wd}
+              type="button"
+              role="tab"
+              aria-selected={day === wd}
+              onClick={() => setDay(wd)}
+              className={cn(
+                "relative rounded-2xl py-3.5 text-base font-semibold",
+                day === wd ? "bg-[#5B4CF5] text-white" : "bg-ink/5 text-ink hover:bg-ink/10 dark:bg-white/5",
+              )}
+            >
+              {WEEKDAYS_SHORT[wd]}
+              {wd === todayWeekday ? (
+                <span className={cn("absolute right-2 top-2 h-1.5 w-1.5 rounded-full", day === wd ? "bg-white" : "bg-[#5B4CF5]")} aria-label="Today" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3.5 flex items-baseline justify-between gap-3">
+          <p className="text-[15px] text-ink-muted">নির্বাচিত দিনের Menu নিচে দেখাবে।</p>
+          <p className="shrink-0 text-sm text-ink-muted">
+            {WEEKDAYS_LONG[day]}
+            {weekDates[day] ? ` · ${fmtShort(weekDates[day])}` : ""}
+          </p>
         </div>
         <p className="sr-only">Meal day used for highlighting: {today}</p>
       </section>
+
+      {(["LUNCH", "DINNER"] as const).map((slot) => {
+        const items = dishes.filter((d) => d.weekday === day && d.slot === slot);
+        const name = slot === "LUNCH" ? "Lunch" : "Dinner";
+        return (
+          <section key={slot} className="rounded-3xl border border-line bg-rice p-4 sm:p-5">
+            <header className="flex items-center justify-between gap-2">
+              <h2 className="text-[22px] font-extrabold tracking-tight">{name}</h2>
+              <span className="rounded-full bg-[#E4F5E4] px-3 py-1.5 text-[13px] font-bold text-[#1E9E4A] dark:bg-[#0E2A1A] dark:text-[#3DD68C]">Every {WEEKDAYS_LONG[day]}</span>
+            </header>
+            {items.length === 0 ? (
+              <p className="mt-3.5 text-[15px] text-ink-muted">No {name.toLowerCase()} menu added yet.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-line">
+                {items.map((dish) => {
+                  const available = dish.stockedOut ? 0 : dish.maxQuantity == null ? null : Math.max(0, dish.maxQuantity - dish.ordered);
+                  return (
+                    <li key={dish.id} className="flex items-start gap-3.5 py-3.5">
+                      {dish.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={dish.imageUrl} alt="" className="h-20 w-20 shrink-0 rounded-2xl object-cover sm:h-24 sm:w-24" />
+                      ) : (
+                        <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-[#5B4CF5]/10 text-xl font-bold text-[#5B4CF5] sm:h-24 sm:w-24">{dish.title.slice(0, 1)}</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[17px] font-bold">{dish.title}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                          {taka(dish.price)} • Maximum Quantity: {dish.maxQuantity ?? "Unlimited"}
+                          <br />
+                          Available Stock: {dish.stockedOut ? "0 (Stock Out)" : available == null ? "Unlimited" : available}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(dish)}
+                        className="shrink-0 rounded-full border-[1.5px] border-line px-5 py-2 text-[15px] font-semibold hover:bg-ink/5"
+                      >
+                        Edit
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={() => openAdd(day, slot)}
+              className="mt-3 flex w-full items-center justify-center gap-1 rounded-full border-[1.5px] border-line py-3.5 text-[17px] font-bold hover:bg-ink/5"
+            >
+              <Plus className="h-5 w-5" /> Add Option
+            </button>
+          </section>
+        );
+      })}
 
       {add ? (
         <DishModal
@@ -163,6 +204,11 @@ export function MenuStudio({
             const payload = toPayload(edit.slot, edit.draft);
             if (!payload) return;
             act(() => updateOptionAction(edit.optionId, payload), { success: "Dish updated", onOk: () => setEdit(null) });
+          }}
+          onDelete={() => {
+            const id = edit.optionId;
+            setEdit(null);
+            setRemoveId(id);
           }}
         />
       ) : null}
@@ -267,6 +313,7 @@ function DishModal({
   onClose,
   onFocus,
   onSubmit,
+  onDelete,
 }: {
   mode: "add" | "edit";
   weekday: number;
@@ -278,6 +325,8 @@ function DishModal({
   onClose: () => void;
   onFocus: () => void;
   onSubmit: () => void;
+  /** Edit mode only: delete lives inside Edit, like the old site. */
+  onDelete?: () => void;
 }) {
   const [error, setError] = useState("");
   useEffect(() => {
@@ -346,6 +395,16 @@ function DishModal({
             {mode === "add" ? "Add dish" : "Update"}
           </button>
         </div>
+        {onDelete ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onDelete}
+            className="mt-3 w-full rounded-full bg-[#FDECEC] py-3.5 text-base font-bold text-[#E03131] dark:bg-[#2B1216] dark:text-[#FF7A7A]"
+          >
+            Delete dish
+          </button>
+        ) : null}
       </form>
     </div>
   );

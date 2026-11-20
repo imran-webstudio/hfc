@@ -1,5 +1,6 @@
 import { ProfileForm } from "@/components/member/profile-form";
 import { SignOutButton } from "@/components/shell/account";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { requireViewer } from "@/lib/session";
 import { listFloors, listOffices } from "@/server/offices";
 
@@ -28,7 +29,11 @@ export default async function ProfilePage() {
           address: viewer.address ?? "",
         }}
       />
-      <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-5">
+      <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-5 lg:hidden">
+        <p className="text-sm font-semibold">Appearance</p>
+        <ThemeToggle labeled />
+      </div>
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-5 lg:mt-10">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{viewer.name ?? "Signed in"}</p>
           <p className="truncate text-xs text-ink-muted">{viewer.email}</p>

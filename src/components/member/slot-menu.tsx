@@ -8,6 +8,7 @@ import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
 import { statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
+import { todayStr } from "@/lib/time";
 
 export type MenuItem = {
   id: string;
@@ -48,6 +49,46 @@ function DishPhoto({ src, alt, sizes, compact = false }: { src: string | null; a
   return <Image src={src} alt={alt} fill unoptimized className="object-cover" sizes={sizes} onError={() => setFailed(true)} />;
 }
 
+function Stepper({
+  qty,
+  disabled,
+  onQty,
+  label,
+}: {
+  qty: number;
+  disabled: boolean;
+  onQty: (q: number) => void;
+  label: string;
+}) {
+  return (
+    <div className={cn("inline-flex items-center gap-3 rounded-full border border-line px-1.5 py-1", disabled && "opacity-40")}>
+      <button
+        type="button"
+        aria-label={`Decrease ${label}`}
+        disabled={disabled || qty <= 0}
+        onClick={() => onQty(qty - 1)}
+        className="grid h-7 w-7 place-items-center rounded-full border border-line disabled:opacity-40"
+      >
+        <Minus className="h-3.5 w-3.5" />
+      </button>
+      <span className="tnum w-4 text-center text-[15px] font-bold">{qty}</span>
+      <button
+        type="button"
+        aria-label={`Increase ${label}`}
+        disabled={disabled || qty >= 20}
+        onClick={() => onQty(qty + 1)}
+        className="grid h-7 w-7 place-items-center rounded-full bg-[#5B4CF5] text-white disabled:opacity-40"
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function StockOutPill() {
+  return <span className="inline-block rounded-full bg-ink/10 px-3 py-1.5 text-[13px] font-semibold text-ink-muted dark:bg-white/10">Stock Out</span>;
+}
+
 export function OrderFood({
   dayName,
   date,
@@ -64,16 +105,13 @@ export function OrderFood({
   existing: ExistingOrder[];
 }) {
   const { act, pending } = useAct();
-  const [slotId, setSlotId] = useState<"LUNCH" | "DINNER">(slots[0]?.slot ?? "LUNCH");
   // One cart for the whole checkout: dishes from lunch AND dinner in a single order (spec §14.1).
   const [cart, setCart] = useState<Record<string, number>>({});
-  const slot = slots.find((s) => s.slot === slotId) ?? slots[0];
   const allItems = useMemo(() => slots.flatMap((s) => s.items), [slots]);
   const lines = allItems.filter((i) => (cart[i.id] ?? 0) > 0).map((i) => ({ item: i, qty: cart[i.id], subtotal: i.price * cart[i.id] }));
   const total = lines.reduce((s, l) => s + l.subtotal, 0);
   const totalQty = lines.reduce((s, l) => s + l.qty, 0);
   const after = balance - total;
-  const empty = useMemo(() => slots.every((s) => s.items.length === 0), [slots]);
 
   const setQty = (id: string, qty: number) =>
     setCart((c) => {
@@ -89,80 +127,82 @@ export function OrderFood({
       onOk: () => setCart({}),
     });
 
-  if (!slot) return <EmptyMenu />;
+  if (!slots.length) return <EmptyMenu />;
+
+  const isToday = date === todayStr();
+  // The card at the top features the slot a member would order from right now:
+  // the first open slot with dishes, else the first slot that has any.
+  const featured = slots.find((s) => s.open && s.items.length > 0) ?? slots.find((s) => s.items.length > 0) ?? slots[0];
+  const featuredName = featured.slot === "LUNCH" ? "Lunch" : "Dinner";
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+    <div className="pb-24 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:pb-0">
       <div>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <section className="rounded-[1.6rem] border border-line bg-rice p-4 shadow-[var(--hfc-card-shadow)] sm:p-5">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {dayName} {slot.slot === "LUNCH" ? "lunch" : "dinner"}
-            </h1>
-            {slot.closesLabel ? <span className="rounded-full bg-[#5B4CF5] px-3 py-1 text-xs font-semibold text-white">{slot.closesLabel}</span> : null}
-            {!slot.open && slot.reason ? <span className="text-sm text-ink-muted">{slot.reason}</span> : null}
+            <h1 className="text-[26px] font-extrabold tracking-tight">{isToday ? "Today's Meal" : `${dayName}'s Meal`}</h1>
+            {featured.closesLabel ? <span className="rounded-full bg-[#5B4CF5] px-3 py-1 text-xs font-semibold text-white">{featured.closesLabel}</span> : null}
           </div>
-          {slots.length > 1 ? (
-            <div className="grid w-full grid-cols-2 gap-2 rounded-2xl bg-rice p-1 ring-1 ring-line sm:flex sm:w-auto">
-              {slots.map((s) => (
-                <button
-                  key={s.slot}
-                  type="button"
-                  onClick={() => setSlotId(s.slot)}
-                  className={cn("h-11 rounded-xl px-5 text-sm font-semibold", slot.slot === s.slot ? "bg-white shadow-sm dark:bg-[#17171F]" : "text-ink-muted")}
-                >
-                  {s.slot === "LUNCH" ? "Lunch" : "Dinner"}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        {empty || slot.items.length === 0 ? (
-          <EmptyMenu />
-        ) : (
-          <ul className="grid grid-cols-2 gap-3 lg:gap-4">
-            {slot.items.map((it) => {
-              const qty = cart[it.id] ?? 0;
-              const on = qty > 0;
-              return (
-                <li key={it.id} className="relative aspect-square overflow-hidden rounded-[1.4rem] bg-[#E7E7E4] dark:bg-[#14141C]">
-                  <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
-                  {!it.available ? (
-                    <span className="absolute right-2 top-2 rounded-full bg-[#0B0B0F]/85 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Stock Out</span>
-                  ) : null}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent p-3 pt-10 text-white">
-                    <p className="line-clamp-2 text-sm font-semibold leading-tight">{it.title}</p>
-                    <div className="mt-1 flex items-end justify-between gap-2">
-                      <p className="tnum text-sm font-semibold">{taka(it.price)}</p>
-                      {!it.available ? null : on ? (
-                        <div className="flex items-center rounded-full bg-[#5B4CF5] text-white">
-                          <button type="button" aria-label="Decrease" className="grid h-8 w-8 place-items-center" onClick={() => setQty(it.id, qty - 1)}>
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="w-4 text-center text-sm font-bold">{qty}</span>
-                          <button type="button" aria-label="Increase" className="grid h-8 w-8 place-items-center" disabled={qty >= 20} onClick={() => setQty(it.id, qty + 1)}>
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          aria-label={`Add ${it.title}`}
-                          disabled={!slot.open}
-                          onClick={() => setQty(it.id, 1)}
-                          className="grid h-8 w-8 place-items-center rounded-full bg-[#5B4CF5] text-white disabled:opacity-40"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
+          <p className="mt-1 text-[15px] text-ink-muted">
+            {dayName} • {featuredName}
+            {!featured.open && featured.reason ? ` · ${featured.reason}` : ""}
+          </p>
+          {featured.items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-ink-muted">No {featuredName.toLowerCase()} menu added yet.</p>
+          ) : (
+            <ul className="mt-4 grid grid-cols-2 gap-3 lg:gap-4">
+              {featured.items.map((it) => {
+                const qty = cart[it.id] ?? 0;
+                return (
+                  <li key={it.id}>
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#E7E7E4] dark:bg-[#14141C]">
+                      <DishPhoto src={it.imageUrl} alt="" sizes="(min-width:1024px) 280px, 45vw" />
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                    <p className="mt-2.5 line-clamp-2 text-[17px] font-bold leading-snug">{it.title}</p>
+                    <p className="tnum mt-0.5 text-[15px] text-ink-muted">{taka(it.price)}</p>
+                    <div className="mt-2">
+                      {!it.available ? <StockOutPill /> : <Stepper qty={qty} disabled={!featured.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {slots.map((s) => {
+          const name = s.slot === "LUNCH" ? "Lunch" : "Dinner";
+          return (
+            <section key={s.slot} className="mt-7">
+              <div className="mb-3 flex flex-wrap items-center gap-3 px-0.5">
+                <h2 className="text-xl font-extrabold tracking-tight">{name}</h2>
+                {s.closesLabel ? <span className="rounded-full bg-[#5B4CF5]/10 px-2.5 py-1 text-[11px] font-semibold text-[#5B4CF5]">{s.closesLabel}</span> : null}
+                {!s.open && s.reason ? <span className="text-sm text-ink-muted">{s.reason}</span> : null}
+              </div>
+              {s.items.length === 0 ? (
+                <p className="px-0.5 text-[15px] text-ink-muted">No {name.toLowerCase()} menu added yet.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {s.items.map((it) => {
+                    const qty = cart[it.id] ?? 0;
+                    return (
+                      <li key={it.id} className="flex items-center gap-3 rounded-[1.1rem] border border-line bg-rice px-3 py-2.5">
+                        <div className="relative h-[58px] w-[58px] shrink-0 overflow-hidden rounded-[13px] bg-[#E7E7E4] dark:bg-[#14141C]">
+                          <DishPhoto src={it.imageUrl} alt="" compact sizes="58px" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-bold">{it.title}</p>
+                          <p className="tnum text-sm text-ink-muted">{taka(it.price)}</p>
+                        </div>
+                        {!it.available ? <StockOutPill /> : <Stepper qty={qty} disabled={!s.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          );
+        })}
 
         {existing.map((o) => (
           <div key={o.id} className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-line bg-rice px-4 py-3">
@@ -201,7 +241,7 @@ export function OrderFood({
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-ink-muted">Tap + on dishes to build one order — lunch and dinner can go together.</p>
+          <p className="mt-3 text-sm text-ink-muted">Use the + buttons to build one order — lunch and dinner can go together.</p>
         )}
         {place ? (
           <p className="mt-4 flex items-start gap-2 rounded-2xl bg-[#F4F1FF] px-3 py-2 text-sm dark:bg-[#1c1a2e]">
@@ -227,7 +267,10 @@ export function OrderFood({
       </aside>
 
       {lines.length ? (
-        <div className="fixed inset-x-0 z-30 mx-auto flex w-[min(100%-1rem,520px)] items-center gap-2 rounded-full bg-[#0B0B0F] px-2 py-2 text-white shadow-xl lg:hidden" style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+        <div
+          className="fixed inset-x-0 z-30 mx-auto flex w-[min(100%-1rem,520px)] items-center gap-2 rounded-full bg-[#0B0B0F] px-2 py-2 text-white shadow-xl lg:hidden"
+          style={{ bottom: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 5rem)" }}
+        >
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3DDC97] text-sm font-bold text-[#0B0B0F]">{totalQty}</span>
           <span className="min-w-0 flex-1 truncate text-sm">
             {lines.length} item{lines.length > 1 ? "s" : ""} · <span className="tnum">{taka(total)}</span>

@@ -9,7 +9,7 @@ import { listOffices } from "@/server/offices";
 
 export const metadata = { title: "Users & deposits" };
 
-export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<{ zone?: string; floor?: string; q?: string }> }) {
+export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<{ zone?: string; floor?: string; q?: string; balance?: string }> }) {
   const viewer = await requireStaff();
   const sp = await searchParams;
   const scope = officeScope(viewer);
@@ -18,8 +18,9 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const floors = await memberFloors(scope, zone !== "all" && zone !== "none" ? zone : undefined);
   const floor = sp.floor && floors.includes(sp.floor) ? sp.floor : "all";
   const q = sp.q ?? "";
+  const balance = sp.balance === "due" || sp.balance === "credit" ? sp.balance : "all";
 
-  const members = await listMembers(scope, { zone, floor, q });
+  const members = await listMembers(scope, { zone, floor, q, balance });
   const managers = await prisma.officeManager.findMany({ where: { userId: { in: members.map((m) => m.id) } }, select: { userId: true } });
   const managerIds = new Set(managers.map((m) => m.userId));
 
@@ -64,6 +65,17 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 ]}
               />
               <FilterSelect bare param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
+              <FilterSelect
+                bare
+                param="balance"
+                label="Balance"
+                value={balance}
+                options={[
+                  { value: "all", label: "All balances" },
+                  { value: "due", label: "With due" },
+                  { value: "credit", label: "With credit" },
+                ]}
+              />
             </>
           </Suspense>
         }

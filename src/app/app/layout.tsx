@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CreditCard, ShieldCheck } from "lucide-react";
 import { MemberPhoneNav, MemberSideNav } from "@/components/shell/member-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { OfflineBanner } from "@/components/ui/offline-banner";
@@ -28,22 +27,18 @@ export default async function MemberLayout({ children }: { children: React.React
       </aside>
       <div className="min-w-0 flex-1">
         <header className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
-          <Link href="/app/profile" className="inline-flex items-center gap-2 rounded-2xl border border-line bg-rice px-3 py-2 shadow-sm">
-            <CreditCard className="h-4 w-4 text-amber-500" />
-            <span className={`tnum text-sm font-bold ${negative ? "text-[#E03131]" : ""}`}>{money}</span>
-          </Link>
-          <Link href="/app" className="text-xl font-black tracking-tight">
+          <Link href="/app" className="text-[26px] font-extrabold leading-none tracking-tight">
             HFC
           </Link>
-          <div className="flex items-center gap-2">
-            {viewer.isStaff ? (
-              <Link href="/admin" className="inline-flex items-center gap-1.5 rounded-full bg-[#5B4CF5] px-3 py-2 text-xs font-bold text-white shadow-sm">
-                <ShieldCheck className="h-4 w-4" />
-                Admin
-              </Link>
-            ) : null}
-            <ThemeToggle />
-          </div>
+          {negative ? (
+            <Link href="/app/profile" className="tnum inline-flex items-center rounded-full bg-[#FDECEC] px-3.5 py-2 text-sm font-bold text-[#E03131] dark:bg-[#2B1216] dark:text-[#FF7A7A]">
+              Due {taka(-viewer.balance)}
+            </Link>
+          ) : (
+            <Link href="/app/profile" className="tnum inline-flex items-center rounded-full border border-line bg-rice px-3.5 py-2 text-sm font-bold shadow-sm">
+              {taka(viewer.balance)}
+            </Link>
+          )}
         </header>
         <main className="px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-2 lg:px-8 lg:pb-12 lg:pt-8">
           <OfflineBanner />

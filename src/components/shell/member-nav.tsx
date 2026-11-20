@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, ShieldCheck, ShoppingBag, User, Wallet } from "lucide-react";
+import { ClipboardList, Home, ShieldCheck, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
-  { href: "/app", label: "Order food", icon: ShoppingBag, exact: true, profile: false },
-  { href: "/app/orders", label: "My orders", icon: ClipboardList, exact: false, profile: false },
-  { href: "/app/profile", label: "Wallet", icon: Wallet, exact: false, profile: false },
-  { href: "/app/profile", label: "Profile", icon: User, exact: false, profile: true },
+  { href: "/app", label: "Home", icon: Home, exact: true },
+  { href: "/app/orders", label: "My Orders", icon: ClipboardList, exact: false },
+  { href: "/app/profile", label: "Profile", icon: User, exact: false },
 ];
 
 export function MemberSideNav({ showAdmin }: { showAdmin: boolean }) {
@@ -17,7 +16,7 @@ export function MemberSideNav({ showAdmin }: { showAdmin: boolean }) {
   return (
     <nav className="mt-6 space-y-1">
       {ITEMS.map((item) => {
-        const on = item.profile ? pathname === "/app/profile" : item.exact ? pathname === item.href : item.href === "/app/profile" ? false : pathname.startsWith(item.href);
+        const on = item.exact ? pathname === item.href : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link
@@ -43,21 +42,34 @@ export function MemberSideNav({ showAdmin }: { showAdmin: boolean }) {
   );
 }
 
+/**
+ * Floating bottom bar, visible on every member screen (including Home, where the
+ * checkout pill stacks above it). Items spread evenly across the pill; staff get
+ * one extra item — Admin — as the last (rightmost) entry.
+ */
 export function MemberPhoneNav({ showAdmin }: { showAdmin: boolean }) {
   const pathname = usePathname();
-  if (pathname === "/app") return null;
   const items = [
-    { href: "/app", label: "Order" },
-    { href: "/app/orders", label: "Orders" },
-    { href: "/app/profile", label: "Profile" },
-    ...(showAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    ...ITEMS,
+    ...(showAdmin ? [{ href: "/admin", label: "Admin", icon: ShieldCheck, exact: false }] : []),
   ];
   return (
-    <nav className="fixed inset-x-0 z-40 mx-auto flex w-[min(100%-1.25rem,440px)] items-stretch justify-around rounded-full bg-[#0B0B0F] px-2 py-2 text-white lg:hidden" style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+    <nav
+      className="fixed inset-x-0 z-40 mx-auto flex w-[min(100%-1.25rem,440px)] items-stretch justify-between rounded-full bg-[#0B0B0F] px-6 py-2 text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-1 ring-white/10 lg:hidden"
+      style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      aria-label="Main"
+    >
       {items.map((item) => {
-        const on = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
+        const on = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        const Icon = item.icon;
         return (
-          <Link key={item.href} href={item.href} className={cn("flex min-h-11 flex-1 items-center justify-center rounded-full text-xs font-semibold", on ? "bg-[#D4FF3A] text-[#0B0B0F]" : "text-white/70")}>
+          <Link
+            key={item.href + item.label}
+            href={item.href}
+            aria-current={on ? "page" : undefined}
+            className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold", on ? "text-[#9D8FFF]" : "text-white/65")}
+          >
+            <Icon className="h-[22px] w-[22px]" strokeWidth={on ? 2.2 : 1.9} />
             {item.label}
           </Link>
         );
