@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Crown, ShieldCheck } from "lucide-react";
 import { setRoleAction } from "@/actions/admin-users";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
@@ -35,6 +35,7 @@ export function UserRole({
         <span className="text-xs text-ink-muted">(this is you — your own role can&rsquo;t be changed here)</span>
       ) : (
         <button className="btn btn-ghost btn-sm" disabled={pending} onClick={() => setConfirm(true)}>
+          <Crown className="h-4 w-4 text-[#B8860B] dark:text-[#FFC94D]" />
           {isAdmin ? "Remove admin" : "Make admin"}
         </button>
       )}

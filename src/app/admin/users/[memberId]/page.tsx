@@ -48,8 +48,11 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           </div>
           <MemberActions memberId={member.id} name={member.name ?? "member"} phone={member.phone ?? ""} balance={member.balance} />
         </div>
-        {!member.banned ? <MemberDeposit memberId={member.id} name={member.name ?? "member"} /> : null}
-        <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} protectedRole={member.role === "SUPER_ADMIN"} />
+        {/* Add Money · Block · Delete — one row, side by side. */}
+        <div className="mt-4 flex items-center gap-2">
+          {!member.banned ? <MemberDeposit memberId={member.id} name={member.name ?? "member"} /> : null}
+          <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} protectedRole={member.role === "SUPER_ADMIN"} />
+        </div>
         {viewer.isSuperAdmin ? <UserRole memberId={member.id} name={member.name ?? "member"} role={member.role} isSelf={viewer.id === member.id} /> : null}
         {member.role !== "SUPER_ADMIN" ? <ClearHistory memberId={member.id} name={member.name ?? "member"} balance={member.balance} /> : null}
         <p className="mt-3 flex items-center gap-2 text-xs">

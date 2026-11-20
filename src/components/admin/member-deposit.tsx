@@ -7,8 +7,8 @@ import { Modal } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 
 /**
- * "Add Money / Make deposit" on a member's account page — sits directly above the
- * Block/Delete row so staff can deposit to this member without leaving the page.
+ * "Add Money / Make deposit" on a member's account page — shares one row with the
+ * Block and Delete buttons so staff can deposit to this member without leaving.
  */
 export function MemberDeposit({ memberId, name }: { memberId: string; name: string }) {
   const { act, pending } = useAct();
@@ -19,11 +19,9 @@ export function MemberDeposit({ memberId, name }: { memberId: string; name: stri
 
   return (
     <>
-      <div className="mt-4">
-        <button type="button" className="btn bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020]" onClick={() => setOpen(true)}>
-          <Wallet className="h-4 w-4" /> Add Money
-        </button>
-      </div>
+      <button type="button" className="btn min-w-0 flex-1 gap-1.5 px-1.5 text-xs bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020]" onClick={() => setOpen(true)}>
+        <Wallet className="h-3.5 w-3.5 shrink-0" /> Add Money
+      </button>
       <Modal open={open} onClose={close} title="Add money" subtitle={`Deposit to ${name}'s account.`} variant="question">
         <form
           className="mt-4"
