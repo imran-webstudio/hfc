@@ -170,8 +170,10 @@ export function OrderFood({
           )}
         </section>
 
-        {slots.map((s) => {
-          const name = s.slot === "LUNCH" ? "Lunch" : "Dinner";
+        {slots
+          .filter((s) => s.slot !== featured.slot)
+          .map((s) => {
+            const name = s.slot === "LUNCH" ? "Lunch" : "Dinner";
           return (
             <section key={s.slot} className="mt-7">
               <div className="mb-3 flex flex-wrap items-center gap-3 px-0.5">
