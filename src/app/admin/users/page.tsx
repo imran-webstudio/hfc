@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { FilterSearch, FilterSelect } from "@/components/admin/filters";
+import { BalancePills, FilterSearch, FilterSelect } from "@/components/admin/filters";
 import { UsersBoard, type UserRow } from "@/components/admin/user-card";
 import { floorLabel } from "@/lib/floors";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const floors = await memberFloors(scope, zone !== "all" && zone !== "none" ? zone : undefined);
   const floor = sp.floor && floors.includes(sp.floor) ? sp.floor : "all";
   const q = sp.q ?? "";
-  const balance = sp.balance === "due" || sp.balance === "credit" ? sp.balance : "all";
+  const balance = sp.balance === "due" || sp.balance === "credit" || sp.balance === "zero" ? sp.balance : "all";
 
   const members = await listMembers(scope, { zone, floor, q, balance });
   // Headline Due/Credit totals cover every member in scope, not the filtered list.
@@ -52,7 +52,6 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       <UsersBoard
         rows={rows}
         totals={totals}
-        balance={balance}
         controls={
           // Control stack in the user's order: Office, Floor, Search, Balance.
           <Suspense>
@@ -71,18 +70,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
               />
               <FilterSelect bare large param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
               <FilterSearch bare large param="q" label="Search" value={q} placeholder="Job ID, name or mobile number" className="w-full" />
-              <FilterSelect
-                bare
-                large
-                param="balance"
-                label="Balance"
-                value={balance}
-                options={[
-                  { value: "all", label: "All balances" },
-                  { value: "due", label: "With due" },
-                  { value: "credit", label: "With credit" },
-                ]}
-              />
+              <BalancePills value={balance} />
             </div>
           </Suspense>
         }

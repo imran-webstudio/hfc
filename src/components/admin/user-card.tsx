@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Search, Wallet, X } from "lucide-react";
 import { depositAction } from "@/actions/admin-users";
-import { useQueryParam } from "@/components/admin/filters";
 import { useAct } from "@/components/ui/use-act";
 import { signedTaka, taka } from "@/lib/money";
-import { cn } from "@/lib/cn";
 
 export type UserRow = {
   id: string;
@@ -43,14 +41,12 @@ function avatar(name: string, banned: boolean) {
   return AVATARS[n];
 }
 
-export function UsersBoard({ rows, controls, totals, balance }: { rows: UserRow[]; controls?: React.ReactNode; totals: { due: number; credit: number }; balance: "all" | "due" | "credit" }) {
-  const setParam = useQueryParam();
+export function UsersBoard({ rows, controls, totals }: { rows: UserRow[]; controls?: React.ReactNode; totals: { due: number; credit: number } }) {
   const [payOpen, setPayOpen] = useState(false);
   // Headline totals are for every member in scope, not just the filtered list —
   // opening ?balance=due must not zero out the Credit total (and vice versa).
   const due = totals.due;
   const credit = totals.credit;
-  const dueOnly = balance === "due";
   const shown = rows;
 
   return (
@@ -71,17 +67,8 @@ export function UsersBoard({ rows, controls, totals, balance }: { rows: UserRow[
 
       {controls ? <div className="mb-3">{controls}</div> : null}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setParam("balance", dueOnly ? "all" : "due")}
-          aria-pressed={dueOnly}
-          className={cn("inline-flex h-11 items-center gap-1 rounded-full px-4 text-sm font-semibold", dueOnly ? "bg-[#5B4CF5] text-white" : "bg-rice text-ink ring-1 ring-line")}
-        >
-          Due only
-          {dueOnly ? <X className="h-3.5 w-3.5" /> : null}
-        </button>
-        <button type="button" className="btn ml-auto hidden bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020] lg:inline-flex" onClick={() => setPayOpen(true)}>
+      <div className="mb-3 hidden justify-end lg:flex">
+        <button type="button" className="btn bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020]" onClick={() => setPayOpen(true)}>
           <Wallet className="h-4 w-4" /> Add money
         </button>
       </div>

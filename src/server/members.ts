@@ -23,6 +23,7 @@ export function memberWhere(scope: OfficeScope, f: MemberFilters): Prisma.UserWh
   // positive means the house owes them (credit). Zero is neither.
   if (f.balance === "due") and.push({ balance: { lt: 0 } });
   else if (f.balance === "credit") and.push({ balance: { gt: 0 } });
+  else if (f.balance === "zero") and.push({ balance: 0 });
   const q = f.q?.trim();
   if (q) {
     and.push({
