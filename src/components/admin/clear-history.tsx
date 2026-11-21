@@ -1,31 +1,38 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { clearHistoryAction } from "@/actions/admin-users";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 import { taka } from "@/lib/money";
+import { cn } from "@/lib/cn";
 
 /**
- * Clear Order History (spec §8.2–8.3): complete account reset. Enabled only when the
- * balance is exactly ৳0 (also enforced server-side, atomically).
+ * Clear Order History (spec §8.2–8.3): complete account reset, shown as a
+ * bordered danger box under the phone row. Enabled only when the balance is
+ * exactly ৳0 (also enforced server-side, atomically).
  */
 export function ClearHistory({ memberId, name, balance }: { memberId: string; name: string; balance: number }) {
   const { act, pending } = useAct();
   const [confirm, setConfirm] = useState(false);
   const enabled = balance === 0;
   return (
-    <div className="mt-4 border-t border-line pt-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <button className="btn btn-ghost btn-sm text-[#E03131]" disabled={!enabled || pending} onClick={() => setConfirm(true)}>
-          Clear order history
-        </button>
-        {!enabled ? (
-          <span className="text-[11px] text-ink-muted">Available only when the balance is exactly {taka(0)} — current balance is {taka(balance)}.</span>
-        ) : (
-          <span className="text-[11px] text-ink-muted">Resets this account: all orders and financial history are deleted.</span>
-        )}
-      </div>
+    <div className="mt-3 rounded-2xl border border-[#E03131]/25 px-4 py-3.5 dark:border-[#E03131]/30">
+      <button
+        type="button"
+        className={cn("flex items-center gap-2.5 text-sm font-bold text-[#E03131]", !enabled && "cursor-not-allowed opacity-60")}
+        disabled={!enabled || pending}
+        onClick={() => setConfirm(true)}
+      >
+        <Trash2 className="h-4 w-4" />
+        Clear Order History
+      </button>
+      <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+        {enabled
+          ? "Resets this account: all orders and financial history are deleted."
+          : `This action activates only when the Current Balance is exactly ${taka(0)} — current balance is ${taka(balance)}.`}
+      </p>
       <ConfirmDialog
         open={confirm}
         title={`Clear all history for ${name}?`}

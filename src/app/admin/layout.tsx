@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, Smartphone, UtensilsCrossed } from "lucide-react";
+import { Home, LogOut, UtensilsCrossed } from "lucide-react";
 import { signOutAction } from "@/actions/auth";
 import { AdminTabBar, AdminTopNav } from "@/components/shell/admin-nav";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -27,9 +27,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminTopNav showTeam={viewer.isSuperAdmin} />
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            <Link href="/app" className="btn btn-ghost btn-sm mr-1" aria-label="Go to the ordering app" title="Ordering app">
-              <Smartphone className="h-4 w-4" />
-              <span className="hidden sm:inline">Ordering app</span>
+            {/* Desktop keeps the header shortcut; on mobile the bottom tab bar has the App tab. */}
+            <Link href="/app" className="btn btn-ghost btn-sm mr-1 max-lg:hidden" aria-label="Go to the ordering app" title="Ordering app">
+              <Home className="h-4 w-4" />
+              Home
             </Link>
             <ThemeToggle />
             <form action={signOutAction}>
@@ -44,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <OfflineBanner />
         {children}
       </main>
-      <AdminTabBar />
+      <AdminTabBar showTeam={viewer.isSuperAdmin} />
     </div>
   );
 }

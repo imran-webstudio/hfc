@@ -38,8 +38,14 @@ export type ActivityItem =
  *   Meals Ordered   = total quantity across valid (non-cancelled) orders
  *   Total Bill      = sum of grand totals of valid BILLED orders (an order bills
  *                     at delivery — a pending order counts toward nothing yet)
- *   Total Deposit   = account deposits (DEPOSIT + legacy DUE_PAYMENT) + Cash Paid
- *                     order amounts (CASH_PAYMENT ledger) + ADJUSTMENT corrections
+ *                     + negative ADJUSTMENT corrections (charges)
+ *   Total Deposit   = money actually paid in: account deposits (DEPOSIT + legacy
+ *                     DUE_PAYMENT) + Cash Paid order amounts (CASH_PAYMENT) +
+ *                     positive ADJUSTMENT corrections
+ * An ADJUSTMENT is a correction, not a deposit: counting a negative one as a
+ * deposit produced absurd negative "Total Deposit" figures (e.g. an opening
+ * balance of −৳650 showed as Total Deposit −৳650). Splitting adjustments by
+ * sign keeps Balance = Total Deposit − Total Bill true for every account.
  * ORDER_BILL ledger rows are the bill side of the ledger, not deposits, and are
  * excluded from the activity feed (the order itself is the visible record).
  * Extra legacy fields (totalDue etc.) are kept for older UI surfaces.
@@ -55,7 +61,7 @@ export type MemberSummary = {
   activity: ActivityItem[];
 };
 
-const DEPOSIT_TYPES: LedgerType[] = ["DEPOSIT", "DUE_PAYMENT", "CASH_PAYMENT", "ADJUSTMENT"];
+const DEPOSIT_TYPES: LedgerType[] = ["DEPOSIT", "DUE_PAYMENT", "CASH_PAYMENT"];
 
 export async function getMemberSummary(userId: string): Promise<MemberSummary> {
   const [user, orders, ledger] = await Promise.all([
@@ -73,8 +79,9 @@ export async function getMemberSummary(userId: string): Promise<MemberSummary> {
   ]);
 
   const live = orders.filter((o) => o.status !== "CANCELLED");
-  const totalBill = live.filter((o) => o.billedAt).reduce((s, o) => s + o.amount, 0);
-  const totalDeposit = ledger.filter((l) => DEPOSIT_TYPES.includes(l.type)).reduce((s, l) => s + l.amount, 0);
+  const adjustments = ledger.filter((l) => l.type === "ADJUSTMENT");
+  const totalBill = live.filter((o) => o.billedAt).reduce((s, o) => s + o.amount, 0) + adjustments.filter((l) => l.amount < 0).reduce((s, l) => s - l.amount, 0);
+  const totalDeposit = ledger.filter((l) => DEPOSIT_TYPES.includes(l.type)).reduce((s, l) => s + l.amount, 0) + adjustments.filter((l) => l.amount > 0).reduce((s, l) => s + l.amount, 0);
   const mealsOrdered = live.reduce((s, o) => s + o.items.reduce((q, i) => q + i.quantity, 0), 0);
 
   const activity: ActivityItem[] = [

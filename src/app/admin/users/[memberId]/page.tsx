@@ -54,23 +54,27 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
           <UserDanger memberId={member.id} name={member.name ?? "member"} banned={member.banned} protectedRole={member.role === "SUPER_ADMIN"} />
         </div>
         {viewer.isSuperAdmin ? <UserRole memberId={member.id} name={member.name ?? "member"} role={member.role} isSelf={viewer.id === member.id} /> : null}
-        {member.role !== "SUPER_ADMIN" ? <ClearHistory memberId={member.id} name={member.name ?? "member"} balance={member.balance} /> : null}
-        <p className="mt-3 flex items-center gap-2 text-xs">
-          <Phone className="h-3.5 w-3.5 text-ink-muted" />
-          <span className="text-ink-muted">Phone:</span>
+        {/* Phone Number row — above Clear Order History (layout per owner's mock). */}
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-line px-4 py-3">
+          <span className="flex items-center gap-2.5 text-sm font-semibold">
+            <Phone className="h-4 w-4 text-ink-muted" />
+            Phone Number
+          </span>
           {member.phone ? (
-            <a href={`tel:${member.phone}`} className="font-bold hover:underline">
+            <a href={`tel:${member.phone}`} className="tnum text-sm font-bold hover:underline">
               {member.phone}
             </a>
           ) : (
-            <span className="text-ink-muted">—</span>
+            <span className="text-sm text-ink-muted">—</span>
           )}
-        </p>
-        <div className="mt-2 flex gap-2">
-          {member.role === "SUPER_ADMIN" ? <Chip tone="leaf">Admin</Chip> : null}
-          {summary.totalDue > 0 ? <Chip tone="red">Due ৳{summary.totalDue.toLocaleString("en-US")}</Chip> : null}
-          {member.banned ? <Chip tone="red">Banned</Chip> : null}
         </div>
+        {member.role !== "SUPER_ADMIN" ? <ClearHistory memberId={member.id} name={member.name ?? "member"} balance={member.balance} /> : null}
+        {member.role === "SUPER_ADMIN" || member.banned ? (
+          <div className="mt-3 flex gap-2">
+            {member.role === "SUPER_ADMIN" ? <Chip tone="leaf">Admin</Chip> : null}
+            {member.banned ? <Chip tone="red">Banned</Chip> : null}
+          </div>
+        ) : null}
       </div>
 
       <StatsGrid s={summary} />

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
+import { ClipboardList, Home, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 type Item = { href: string; label: string; short: string; icon: typeof LayoutGrid; exact?: boolean };
 
 const ITEMS: Item[] = [
-  { href: "/admin", label: "Dashboard", short: "Home", icon: LayoutGrid, exact: true },
+  { href: "/admin", label: "Dashboard", short: "Dashboard", icon: LayoutGrid, exact: true },
   { href: "/admin/menu", label: "Menu", short: "Menu", icon: UtensilsCrossed },
   { href: "/admin/orders", label: "Orders", short: "Orders", icon: ClipboardList },
   { href: "/admin/users", label: "Users & deposits", short: "Users", icon: Users },
@@ -46,9 +46,9 @@ export function AdminTopNav({ showTeam }: { showTeam: boolean }) {
   );
 }
 
-export function AdminTabBar() {
+export function AdminTabBar({ showTeam }: { showTeam: boolean }) {
   const pathname = usePathname();
-  const items = ITEMS.filter((i) => i.href !== "/admin/team");
+  const items = showTeam ? ITEMS : ITEMS.filter((i) => i.href !== "/admin/team");
   return (
     <nav
       className="fixed inset-x-0 z-40 mx-auto flex w-[min(100%-1.25rem,440px)] items-stretch justify-around rounded-full bg-[#0B0B0F] px-1.5 py-1.5 text-white shadow-[0_12px_40px_rgba(0,0,0,0.28)] lg:hidden"
@@ -63,7 +63,7 @@ export function AdminTabBar() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1 text-[10px] font-semibold",
+              "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-0.5 py-1 text-[9.5px] font-semibold tracking-tight",
               on ? "text-[#D4FF3A]" : "text-white/55",
             )}
           >
@@ -72,6 +72,14 @@ export function AdminTabBar() {
           </Link>
         );
       })}
+      {/* Back to the member app (its home) — lives in the bottom bar on mobile. */}
+      <Link
+        href="/app"
+        className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-0.5 py-1 text-[9.5px] font-semibold tracking-tight text-white/55"
+      >
+        <Home className="h-5 w-5" />
+        Home
+      </Link>
     </nav>
   );
 }

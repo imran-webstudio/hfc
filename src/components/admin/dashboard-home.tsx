@@ -10,16 +10,19 @@ import { cn } from "@/lib/cn";
 import { taka } from "@/lib/money";
 import { fmtDay, fmtShort } from "@/lib/time";
 
+export type PackPerson = { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string };
+
+export type PackOfficeRow = { officeName: string; orders: number; portions: number; amount: number; people: PackPerson[] };
+
 export type PackRow = {
   key: string;
   slot: string;
   title: string;
-  officeName: string;
   imageUrl: string | null;
   orders: number;
   portions: number;
   amount: number;
-  people: { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string }[];
+  offices: PackOfficeRow[];
 };
 
 type Opt = { value: string; label: string };
@@ -135,8 +138,15 @@ export function DashboardHome({
       <p className="mt-2 text-xs text-ink-muted">Tap any card above to open that customer list.</p>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Pack by item</h2>
-        <p className="mb-3 text-xs text-ink-muted">Grouped by dish · tap a row to see who ordered and where</p>
+        <div className="mb-3 flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#5B4CF5]/10 text-[#5B4CF5]">
+            <Package className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-display text-xl font-bold leading-tight">Pack by item</h2>
+            <p className="text-xs text-ink-muted">Group by dish · Sorted by highest orders</p>
+          </div>
+        </div>
         {!published ? (
           <EmptyState title="No menus published for today yet" body="Publish lunch or dinner on the Menu page to start taking orders." />
         ) : stats.pack.length === 0 ? (
@@ -211,60 +221,94 @@ function AccountRow({
 }
 
 function PackList({ items }: { items: PackRow[] }) {
-  const [open, setOpen] = useState<string | null>(null);
+  const [openDish, setOpenDish] = useState<string | null>(null);
+  const [openOffice, setOpenOffice] = useState<string | null>(null);
   return (
-    <ul className="surface-card divide-y divide-line overflow-hidden rounded-3xl">
+    <div className="space-y-3">
       {items.map((row) => {
-        const isOpen = open === row.key;
+        const isOpen = openDish === row.key;
         const meal = row.slot === "LUNCH" ? "Lunch" : "Dinner";
         return (
-          <li key={row.key}>
+          <div key={row.key} className="surface-card overflow-hidden rounded-3xl">
             <button
               type="button"
-              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
               aria-expanded={isOpen}
-              onClick={() => setOpen(isOpen ? null : row.key)}
+              onClick={() => setOpenDish(isOpen ? null : row.key)}
             >
               {row.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                <img src={row.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
               ) : (
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#5B4CF5]/10 text-xs font-semibold text-[#5B4CF5]">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#5B4CF5]/10 font-display text-lg font-bold text-[#5B4CF5]">
                   {row.title.slice(0, 1)}
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{row.title}</span>
-                <span className="block truncate text-xs text-ink-muted">
-                  {meal} · {row.officeName} · {row.orders} {row.orders === 1 ? "order" : "orders"} · {row.portions} portions · {taka(row.amount)}
+                <span className="block font-display text-[15px] font-bold leading-snug">{row.title}</span>
+                <span className="block truncate text-[13px] text-ink-muted">
+                  {meal} · {row.orders} {row.orders === 1 ? "Order" : "Orders"}
                 </span>
               </span>
-              <span className="tnum rounded-full bg-sand px-3 py-1 text-sm font-semibold">{row.portions}</span>
-              <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-muted transition", isOpen && "rotate-180")} />
+              <span className="tnum shrink-0 rounded-full bg-leaf/15 px-2.5 py-1 text-xs font-bold text-leaf-deep">
+                {row.portions} {row.portions === 1 ? "Portion" : "Portions"}
+              </span>
+              <ChevronDown className={cn("h-5 w-5 shrink-0 text-ink-muted transition", isOpen && "rotate-180")} />
             </button>
             {isOpen ? (
-              <ul className="space-y-1 border-t border-line bg-sand/60 px-4 py-3 pl-16 text-sm">
-                <li className="pb-1 text-xs font-medium text-ink-muted">
-                  {row.orders} orders · {row.portions} portions · {taka(row.amount)}
-                </li>
-                {row.people.map((person) => (
-                  <li key={person.orderId} className="flex items-center justify-between gap-3">
-                    <span>
-                      <b>{person.name}</b>
-                      <span className="text-ink-muted">
-                        {" "}
-                        · {[person.floor ? `Floor ${person.floor}` : null, person.desk ? `Desk ${person.desk}` : null].filter(Boolean).join(" · ") || row.officeName}
-                      </span>
-                    </span>
-                    <span className="tnum text-ink-muted">× {person.quantity}</span>
-                  </li>
-                ))}
+              <ul className="divide-y divide-line border-t border-line">
+                {row.offices.map((office, idx) => {
+                  const officeKey = `${row.key}|${office.officeName}`;
+                  const officeOpen = openOffice === officeKey;
+                  return (
+                    <li key={officeKey}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                        aria-expanded={officeOpen}
+                        onClick={() => setOpenOffice(officeOpen ? null : officeKey)}
+                      >
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#5B4CF5]/10 font-display text-[13px] font-bold text-[#5B4CF5]">
+                          {idx + 1}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="truncate text-[15px] font-semibold">{office.officeName}</span>
+                            <span className="tnum shrink-0 text-[11px]">
+                              <b>{office.orders}</b> <span className="text-ink-muted">{office.orders === 1 ? "Order" : "Orders"}</span>
+                              {" · "}
+                              <b>{office.portions}</b> <span className="text-ink-muted">{office.portions === 1 ? "Portion" : "Portions"}</span>
+                            </span>
+                          </span>
+                          <span className="block text-xs text-ink-muted">Tap to view customers</span>
+                        </span>
+                        <ChevronRight className={cn("h-4 w-4 shrink-0 text-ink-muted transition", officeOpen && "rotate-90")} />
+                      </button>
+                      {officeOpen ? (
+                        <ul className="space-y-1 bg-sand/60 px-4 py-3 pl-16 text-sm">
+                          {office.people.map((person) => (
+                            <li key={person.orderId} className="flex items-center justify-between gap-3">
+                              <span>
+                                <b>{person.name}</b>
+                                <span className="text-ink-muted">
+                                  {" "}
+                                  · {[person.floor ? `Floor ${person.floor}` : null, person.desk ? `Desk ${person.desk}` : null].filter(Boolean).join(" · ") || office.officeName}
+                                </span>
+                              </span>
+                              <span className="tnum text-ink-muted">× {person.quantity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 

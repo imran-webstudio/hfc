@@ -53,40 +53,37 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
     }
   }
 
-  // Pack by dish + meal + office so who/where stays meaningful when the filter is All.
+  // Pack grouped by dish (slot + title) across all offices in scope, with a
+  // per-office breakdown inside each dish — offices sorted by portions, dishes
+  // sorted by highest portions first.
+  type PackPerson = { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string };
+  type PackOffice = { officeName: string; orders: number; portions: number; amount: number; people: PackPerson[] };
   const pack = new Map<
     string,
-    {
-      key: string;
-      slot: string;
-      title: string;
-      officeName: string;
-      imageUrl: string | null;
-      orders: number;
-      portions: number;
-      amount: number;
-      people: { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string }[];
-    }
+    { key: string; slot: string; title: string; imageUrl: string | null; orders: number; portions: number; amount: number; offices: Map<string, PackOffice> }
   >();
   for (const o of live) {
     for (const item of o.items) {
-      const key = `${item.slot}|${item.title}|${o.officeId}`;
+      const key = `${item.slot}|${item.title}`;
       const entry = pack.get(key) ?? {
         key,
         slot: item.slot,
         title: item.title,
-        officeName: o.office.name,
         imageUrl: item.option?.imageUrl ?? null,
         orders: 0,
         portions: 0,
         amount: 0,
-        people: [],
+        offices: new Map<string, PackOffice>(),
       };
       entry.orders += 1;
       entry.portions += item.quantity;
       entry.amount += item.subtotal;
       if (!entry.imageUrl && item.option?.imageUrl) entry.imageUrl = item.option.imageUrl;
-      entry.people.push({
+      const office = entry.offices.get(o.officeId) ?? { officeName: o.office.name, orders: 0, portions: 0, amount: 0, people: [] };
+      office.orders += 1;
+      office.portions += item.quantity;
+      office.amount += item.subtotal;
+      office.people.push({
         orderId: o.id,
         name: o.user.name ?? "Member",
         floor: o.user.floor,
@@ -94,6 +91,7 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
         quantity: item.quantity,
         status: o.status,
       });
+      entry.offices.set(o.officeId, office);
       pack.set(key, entry);
     }
   }
@@ -122,7 +120,9 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
     activeUsers: users.length,
     usersWithDue,
     outstandingDue,
-    pack: [...pack.values()].sort((a, b) => a.slot.localeCompare(b.slot) || b.portions - a.portions),
+    pack: [...pack.values()]
+      .map((d) => ({ ...d, offices: [...d.offices.values()].sort((a, b) => b.portions - a.portions || b.orders - a.orders) }))
+      .sort((a, b) => b.portions - a.portions || b.orders - a.orders),
   };
 }
 
