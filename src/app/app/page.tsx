@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/session";
 import { WEEKDAYS_LONG, addDays, fmtFullDate, hhmmToMinutes, isDateStr, minutesNow, todayStr, weekdayOf } from "@/lib/time";
 import { optionsForDate } from "@/server/menu";
-import { isDayOff, slotState } from "@/server/orders";
+import { slotState } from "@/server/orders";
 
 export const metadata = { title: "Order food" };
 
@@ -26,7 +26,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const date = isDateStr(dateParam) && dateParam >= today && dateParam <= max ? dateParam : today;
   const zone = viewer.zone;
   const place = [zone?.name, viewer.floor ? `F${viewer.floor}` : null, viewer.desk ? `Desk ${viewer.desk}` : null].filter(Boolean).join(" · ");
-  const dayOff = zone ? await isDayOff(zone.id, date) : false;
+  // Day-off row carries the admin's notice note — members must SEE it on the
+  // home page (Service Notice banner), not just find the slots closed.
+  const offRow = zone ? await prisma.dayOff.findUnique({ where: { officeId_date: { officeId: zone.id, date } } }) : null;
+  const dayOff = !!offRow;
   // Members see stocked-out dishes too (flagged "Stock Out"), but NEVER numeric stock:
   // only the `available` boolean crosses into the member payload (spec §5/§14.3).
   const options = zone && !dayOff ? await optionsForDate(zone.id, date, { includeStockedOut: true }) : [];
@@ -73,6 +76,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       isStaff={viewer.isStaff}
       date={date}
       place={place}
+      cateringOff={dayOff}
+      offNote={offRow?.note ?? null}
       balance={viewer.balance}
       slots={slots}
       existing={existing}

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 /** Reads/writes a single URL query param (server components re-render with the new value). */
 export function useQueryParam() {
@@ -25,6 +26,7 @@ export function FilterSelect({
   options,
   className,
   bare = false,
+  large = false,
 }: {
   param: string;
   label: string;
@@ -32,12 +34,13 @@ export function FilterSelect({
   options: { value: string; label: string }[];
   className?: string;
   bare?: boolean;
+  large?: boolean;
 }) {
   const set = useQueryParam();
   return (
     <div className={className}>
       <label className={bare ? "sr-only" : "field-label"} htmlFor={`f-${param}`}>{label}</label>
-      <select id={`f-${param}`} className={bare ? "h-11 w-full rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink" : "input"} value={value} onChange={(e) => set(param, e.target.value)}>
+      <select id={`f-${param}`} className={bare ? (large ? "h-14 w-full rounded-full border border-line bg-rice px-5 text-base font-medium text-ink" : "h-11 w-full rounded-full border border-line bg-rice px-3 text-sm font-medium text-ink") : "input"} value={value} onChange={(e) => set(param, e.target.value)}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -56,7 +59,7 @@ export function FilterDate({ param, label, value, className, bare = false }: { p
   );
 }
 
-export function FilterSearch({ param, label, value, placeholder, className, bare = false }: { param: string; label: string; value: string; placeholder: string; className?: string; bare?: boolean }) {
+export function FilterSearch({ param, label, value, placeholder, className, bare = false, large = false }: { param: string; label: string; value: string; placeholder: string; className?: string; bare?: boolean; large?: boolean }) {
   const set = useQueryParam();
   const [text, setText] = useState(value);
   const first = useRef(true);
@@ -73,8 +76,8 @@ export function FilterSearch({ param, label, value, placeholder, className, bare
     <div className={className}>
       <label className={bare ? "sr-only" : "field-label"} htmlFor={`f-${param}`}>{label}</label>
       <div className="relative">
-        {bare ? <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" /> : null}
-        <input id={`f-${param}`} className={bare ? "h-11 w-full rounded-full border border-line bg-rice pl-10 pr-4 text-sm text-ink" : "input"} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} />
+        {bare ? <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 text-ink-muted", large ? "left-4 h-5 w-5" : "left-3 h-4 w-4")} /> : null}
+        <input id={`f-${param}`} className={bare ? (large ? "h-14 w-full rounded-full border border-line bg-rice pl-12 pr-4 text-base text-ink" : "h-11 w-full rounded-full border border-line bg-rice pl-10 pr-4 text-sm text-ink") : "input"} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} />
       </div>
     </div>
   );

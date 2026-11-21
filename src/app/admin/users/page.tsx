@@ -21,6 +21,12 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const balance = sp.balance === "due" || sp.balance === "credit" ? sp.balance : "all";
 
   const members = await listMembers(scope, { zone, floor, q, balance });
+  // Headline Due/Credit totals cover every member in scope, not the filtered list.
+  const allMembers = await listMembers(scope, {});
+  const totals = {
+    due: allMembers.reduce((s, m) => s + Math.max(0, -m.balance), 0),
+    credit: allMembers.reduce((s, m) => s + Math.max(0, m.balance), 0),
+  };
   const managers = await prisma.officeManager.findMany({ where: { userId: { in: members.map((m) => m.id) } }, select: { userId: true } });
   const managerIds = new Set(managers.map((m) => m.userId));
 
@@ -45,12 +51,15 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       <h1 className="mb-4 text-3xl font-semibold tracking-tight lg:text-4xl">Users & deposits</h1>
       <UsersBoard
         rows={rows}
+        totals={totals}
+        balance={balance}
         controls={
           // Control stack in the user's order: Office, Floor, Search, Balance.
           <Suspense>
             <div className="space-y-2">
               <FilterSelect
                 bare
+                large
                 param="zone"
                 label="Office"
                 value={zone}
@@ -60,10 +69,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                   ...offices.map((o) => ({ value: o.id, label: o.name })),
                 ]}
               />
-              <FilterSelect bare param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
-              <FilterSearch bare param="q" label="Search" value={q} placeholder="Job ID, name or mobile number" className="w-full" />
+              <FilterSelect bare large param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
+              <FilterSearch bare large param="q" label="Search" value={q} placeholder="Job ID, name or mobile number" className="w-full" />
               <FilterSelect
                 bare
+                large
                 param="balance"
                 label="Balance"
                 value={balance}

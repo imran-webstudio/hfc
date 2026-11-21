@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Search, Wallet, X } from "lucide-react";
 import { depositAction } from "@/actions/admin-users";
+import { useQueryParam } from "@/components/admin/filters";
 import { useAct } from "@/components/ui/use-act";
 import { signedTaka, taka } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -42,30 +43,30 @@ function avatar(name: string, banned: boolean) {
   return AVATARS[n];
 }
 
-export function UsersBoard({ rows, controls }: { rows: UserRow[]; controls?: React.ReactNode }) {
-  const [dueOnly, setDueOnly] = useState(false);
+export function UsersBoard({ rows, controls, totals, balance }: { rows: UserRow[]; controls?: React.ReactNode; totals: { due: number; credit: number }; balance: "all" | "due" | "credit" }) {
+  const setParam = useQueryParam();
   const [payOpen, setPayOpen] = useState(false);
-  const due = rows.reduce((s, r) => s + Math.max(0, -r.balance), 0);
-  const credit = rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
-  const shown = dueOnly ? rows.filter((r) => r.balance < 0 || r.due > 0) : rows;
+  // Headline totals are for every member in scope, not just the filtered list —
+  // opening ?balance=due must not zero out the Credit total (and vice versa).
+  const due = totals.due;
+  const credit = totals.credit;
+  const dueOnly = balance === "due";
+  const shown = rows;
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="surface-card flex min-w-[16rem] flex-1 items-stretch rounded-2xl px-4 py-3 sm:max-w-md">
+      <div className="mb-4">
+        <div className="surface-card flex w-full items-stretch rounded-[2rem] px-5 py-5">
           <div className="flex-1">
-            <p className="text-xs font-medium text-ink-muted">Due</p>
-            <p className="tnum text-2xl font-semibold text-[#E03131]">{taka(due)}</p>
+            <p className="text-sm font-medium text-ink-muted">Due</p>
+            <p className="tnum text-[34px] font-extrabold leading-tight text-[#E03131]">{taka(due)}</p>
           </div>
           <div className="mx-4 w-px bg-line" />
           <div className="flex-1">
-            <p className="text-xs font-medium text-ink-muted">Credit</p>
-            <p className="tnum text-2xl font-semibold text-[#0F9B8E]">{taka(credit)}</p>
+            <p className="text-sm font-medium text-ink-muted">Credit</p>
+            <p className="tnum text-[34px] font-extrabold leading-tight text-[#0F9B8E]">{taka(credit)}</p>
           </div>
         </div>
-        <button type="button" className="btn hidden bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020] lg:inline-flex" onClick={() => setPayOpen(true)}>
-          <Wallet className="h-4 w-4" /> Add money
-        </button>
       </div>
 
       {controls ? <div className="mb-3">{controls}</div> : null}
@@ -73,11 +74,15 @@ export function UsersBoard({ rows, controls }: { rows: UserRow[]; controls?: Rea
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setDueOnly((v) => !v)}
+          onClick={() => setParam("balance", dueOnly ? "all" : "due")}
+          aria-pressed={dueOnly}
           className={cn("inline-flex h-11 items-center gap-1 rounded-full px-4 text-sm font-semibold", dueOnly ? "bg-[#5B4CF5] text-white" : "bg-rice text-ink ring-1 ring-line")}
         >
           Due only
           {dueOnly ? <X className="h-3.5 w-3.5" /> : null}
+        </button>
+        <button type="button" className="btn ml-auto hidden bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020] lg:inline-flex" onClick={() => setPayOpen(true)}>
+          <Wallet className="h-4 w-4" /> Add money
         </button>
       </div>
 

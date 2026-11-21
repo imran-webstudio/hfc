@@ -17,6 +17,7 @@ import {
   Moon,
   Plus,
   Sun,
+  TriangleAlert,
   UtensilsCrossed,
   Wallet,
   X,
@@ -260,6 +261,8 @@ export function OrderFood({
   isStaff,
   date,
   place,
+  cateringOff,
+  offNote,
   balance,
   slots,
   existing,
@@ -271,6 +274,8 @@ export function OrderFood({
   isStaff: boolean;
   date: string;
   place: string;
+  cateringOff: boolean;
+  offNote: string | null;
   balance: number;
   slots: FoodSlot[];
   existing: ExistingOrder[];
@@ -301,7 +306,7 @@ export function OrderFood({
   if (!slots.length) return <EmptyMenu />;
 
   return (
-    <div className="pb-24 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:pb-0">
+    <div className={cateringOff ? "pb-24 lg:pb-0" : "pb-24 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:pb-0"}>
       <div>
         <div className="px-0.5">
           <h1 className="text-[26px] font-extrabold tracking-tight">{isToday ? "Today's Meal" : `${dayName}'s Meal`}</h1>
@@ -309,19 +314,17 @@ export function OrderFood({
             <CalendarDays size={16} className="text-[#5B4CF5]" />
             {dayName} • {fullDate}
           </p>
-          {place ? (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
-              <MapPin size={13} />
-              {place}
-            </p>
-          ) : null}
         </div>
 
-        <div className="mt-5 space-y-5">
-          {slots.map((s) => (
-            <SlotBox key={s.slot} s={s} weekday={weekday} isStaff={isStaff} cart={cart} setQty={setQty} />
-          ))}
-        </div>
+        {cateringOff ? (
+          <ServiceOff note={offNote} />
+        ) : (
+          <div className="mt-5 space-y-5">
+            {slots.map((s) => (
+              <SlotBox key={s.slot} s={s} weekday={weekday} isStaff={isStaff} cart={cart} setQty={setQty} />
+            ))}
+          </div>
+        )}
 
         {existing.length > 0 ? (
           <section className="mt-8">
@@ -366,6 +369,7 @@ export function OrderFood({
         ) : null}
       </div>
 
+      {cateringOff ? null : (
       <aside className="mt-6 hidden rounded-[1.6rem] border border-line bg-rice p-5 shadow-[var(--hfc-card-shadow)] lg:block">
         <h2 className="text-lg font-semibold">Your order</h2>
         {lines.length ? (
@@ -411,6 +415,7 @@ export function OrderFood({
           Place order{lines.length ? ` · ${taka(total)}` : ""}
         </button>
       </aside>
+      )}
 
       {lines.length ? (
         <div
@@ -427,6 +432,58 @@ export function OrderFood({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Cloche with a prohibition badge — the "service off" illustration from the reference design. */
+function ClocheOffArt() {
+  return (
+    <svg viewBox="0 0 220 150" className="mx-auto w-52 max-w-full" role="img" aria-label="Catering service off">
+      <g stroke="#9AA0AE" strokeWidth="7" strokeLinecap="round">
+        <line x1="16" y1="62" x2="42" y2="52" />
+        <line x1="12" y1="88" x2="40" y2="88" />
+        <line x1="178" y1="52" x2="204" y2="62" />
+        <line x1="180" y1="88" x2="208" y2="88" />
+      </g>
+      <rect x="103" y="38" width="14" height="10" rx="4" className="fill-[#B9BEC9] dark:fill-[#8B919D]" />
+      <circle cx="110" cy="34" r="8" className="fill-[#C7CBD4] dark:fill-[#9BA1AD]" />
+      <path d="M55 108 A55 52 0 0 1 165 108 Z" className="fill-[#C7CBD4] dark:fill-[#9BA1AD]" />
+      <path d="M78 74 A38 38 0 0 1 104 60" fill="none" stroke="#FFFFFF" strokeOpacity="0.55" strokeWidth="7" strokeLinecap="round" />
+      <rect x="44" y="112" width="132" height="8" rx="4" className="fill-[#AEB3BE] dark:fill-[#787E8A]" />
+      <g fill="none" stroke="#E03131" strokeWidth="10">
+        <circle cx="160" cy="112" r="23" />
+        <line x1="143" y1="95" x2="177" y2="129" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+/** Day-off state for the member home: amber Service Notice banner with the admin's note, then the off illustration. */
+function ServiceOff({ note }: { note: string | null }) {
+  return (
+    <div className="mt-5">
+      <div className="flex items-stretch gap-4 rounded-[1.6rem] border border-[#F0B429]/70 bg-gradient-to-br from-[#FFF6D8] to-[#FFEFC0] p-4 dark:border-[#8A6D1A] dark:from-[#3A2C07] dark:to-[#241B04] sm:p-5">
+        <div className="flex items-center border-r border-[#F0B429]/50 pr-4 dark:border-[#8A6D1A]/70">
+          <TriangleAlert className="h-10 w-10 shrink-0 fill-[#FFC727] text-[#3D2E06]" strokeWidth={2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-extrabold tracking-tight text-[#B97E0C] dark:text-[#FFC727]">Service Notice</h2>
+            <span className="shrink-0 rounded-full bg-[#FFC727] px-3 py-1 text-xs font-bold text-[#3D2E06]">Catering Off</span>
+          </div>
+          {note ? <p className="mt-1.5 text-[15px] leading-relaxed text-[#6B5410] dark:text-[#F0D48A]">{note}</p> : null}
+        </div>
+      </div>
+      <div className="px-4 py-12 text-center">
+        <ClocheOffArt />
+        <h2 className="mt-7 text-[26px] font-extrabold leading-tight tracking-tight">Catering Service is Currently Off</h2>
+        <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink-muted">
+          We apologize for the inconvenience.
+          <br />
+          Please check again tomorrow.
+        </p>
+      </div>
     </div>
   );
 }
