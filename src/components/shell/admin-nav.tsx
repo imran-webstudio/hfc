@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, Home, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
+import { ClipboardList, LayoutGrid, Settings2, Users, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 type Item = { href: string; label: string; short: string; icon: typeof LayoutGrid; exact?: boolean };
@@ -72,14 +72,6 @@ export function AdminTabBar({ showTeam }: { showTeam: boolean }) {
           </Link>
         );
       })}
-      {/* Back to the member app (its home) — lives in the bottom bar on mobile. */}
-      <Link
-        href="/app"
-        className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-0.5 py-1 text-[9.5px] font-semibold tracking-tight text-white/55"
-      >
-        <Home className="h-5 w-5" />
-        Home
-      </Link>
     </nav>
   );
 }

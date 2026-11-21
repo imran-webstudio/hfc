@@ -47,31 +47,26 @@ export function ThemeToggle({ labeled = false }: { labeled?: boolean }) {
     applyTheme(next);
   }
 
+  // One switch, one action: a click anywhere flips to the opposite mode.
+  // (Two set-mode buttons felt broken — tapping Sun in light mode did nothing.)
   return (
     <div className={cn("flex items-center gap-2", labeled && "w-full justify-between")}>
       {labeled ? <span className="text-xs font-medium text-ink-muted">Light / Dark</span> : null}
-      <div className="flex items-center rounded-full bg-sand p-1 ring-1 ring-line" role="group" aria-label="Colour theme">
-        <button
-          type="button"
-          aria-label="Light theme"
-          aria-pressed={mode === "light"}
-          suppressHydrationWarning
-          onClick={() => choose("light")}
-          className="theme-sun"
-        >
+      <button
+        type="button"
+        aria-label="Toggle colour theme"
+        title="Toggle light / dark"
+        suppressHydrationWarning
+        onClick={() => choose(mode === "dark" ? "light" : "dark")}
+        className="flex items-center rounded-full bg-sand p-1 ring-1 ring-line"
+      >
+        <span className="theme-sun">
           <Sun className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          aria-label="Dark theme"
-          aria-pressed={mode === "dark"}
-          suppressHydrationWarning
-          onClick={() => choose("dark")}
-          className="theme-moon"
-        >
+        </span>
+        <span className="theme-moon">
           <Moon className="h-4 w-4" />
-        </button>
-      </div>
+        </span>
+      </button>
     </div>
   );
 }

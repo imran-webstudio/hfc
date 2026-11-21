@@ -27,10 +27,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <AdminTopNav showTeam={viewer.isSuperAdmin} />
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Desktop keeps the header shortcut; on mobile the bottom tab bar has the App tab. */}
-            <Link href="/app" className="btn btn-ghost btn-sm mr-1 max-lg:hidden" aria-label="Go to the ordering app" title="Ordering app">
+            {/* Home (the member app) sits beside the theme switch on every screen size. */}
+            <Link href="/app" className="icon-btn" aria-label="Go to the ordering app" title="Home">
               <Home className="h-4 w-4" />
-              Home
             </Link>
             <ThemeToggle />
             <form action={signOutAction}>
