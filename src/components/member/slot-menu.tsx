@@ -11,7 +11,6 @@ import {
   Check,
   CircleAlert,
   Clock,
-  History,
   MapPin,
   Minus,
   Moon,
@@ -25,9 +24,9 @@ import {
 import { cancelOrderAction, placeOrderAction } from "@/actions/member";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
-import { statusLabel } from "@/lib/labels";
+import { orderNumberLabel, statusLabel } from "@/lib/labels";
 import { signedTaka, taka } from "@/lib/money";
-import { WEEKDAYS_SHORT } from "@/lib/time";
+import { fmtTime } from "@/lib/time";
 
 export type MenuItem = {
   id: string;
@@ -40,13 +39,13 @@ export type MenuItem = {
 };
 export type ExistingOrder = {
   id: string;
-  title: string;
-  quantity: number;
-  itemCount: number;
+  number: number;
+  slot: "LUNCH" | "DINNER";
+  placedAt: string;
+  itemsText: string;
   amount: number;
   status: string;
   paymentStatus: string;
-  imageUrl: string | null;
 };
 
 export type FoodSlot = {
@@ -297,9 +296,11 @@ export function OrderFood({
       return next;
     });
 
+  // Lunch and dinner selections become separate orders (one per slot).
+  const orderCount = slots.filter((s) => s.items.some((i) => (cart[i.id] ?? 0) > 0)).length;
   const placeOrder = () =>
     act(() => placeOrderAction({ items: lines.map((l) => ({ optionId: l.item.id, quantity: l.qty })), date }), {
-      success: `Order placed — ${taka(total)}`,
+      success: orderCount > 1 ? `${orderCount} orders placed — ${taka(total)}` : `Order placed — ${taka(total)}`,
       onOk: () => setCart({}),
     });
 
@@ -329,32 +330,29 @@ export function OrderFood({
         {existing.length > 0 ? (
           <section className="mt-8">
             <div className="mb-3 flex items-center gap-2 px-0.5">
-              <History className="h-5 w-5 text-[#5B4CF5]" />
-              <h2 className="text-lg font-extrabold tracking-tight">Recently Ordered</h2>
+              <h2 className="text-lg font-extrabold tracking-tight">{isToday ? "Today's Orders" : `${dayName}'s Orders`}</h2>
               <Link href="/app/orders" className="ml-auto inline-flex items-center gap-1 text-sm font-bold text-[#5B4CF5]">
                 View All
                 <ArrowRight size={15} />
               </Link>
             </div>
-            <ul className="space-y-2.5">
-              {existing.map((o) => (
-                <li key={o.id} className="flex items-center gap-3 rounded-[1.25rem] border border-line bg-rice p-3">
-                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#E7E7E4] dark:bg-[#14141C]">
-                    <DishPhoto src={o.imageUrl} alt="" compact sizes="56px" />
+            <div className="rounded-[1.6rem] border border-line bg-rice shadow-[var(--hfc-card-shadow)]">
+              {existing.map((o, idx) => (
+                <div key={o.id} className={cn("px-4 py-4 sm:px-5", idx > 0 && "border-t border-line")}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-[16px] font-extrabold">Order {orderNumberLabel(o.number)}</p>
+                    <p className="tnum text-xl font-extrabold">{taka(o.amount)}</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-bold">{o.itemCount === 1 ? `${o.title} × ${o.quantity}` : o.title}</p>
-                    <p className="mt-0.5 whitespace-nowrap text-xs text-ink-muted">
-                      Order #{o.id.slice(-6).toUpperCase()} • {WEEKDAYS_SHORT[weekday]}
-                    </p>
-                    <p className="tnum mt-0.5 text-[15px] font-extrabold text-[#5B4CF5]">{taka(o.amount)}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {statusLabel(o.slot)} · Order Placed at {fmtTime(o.placedAt)}
+                  </p>
+                  <p className="mt-1 text-[15px]">{o.itemsText}</p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                     <DeliveryPill status={o.status} />
                     <PaymentPill status={o.paymentStatus} />
                     {o.status === "PENDING" ? (
                       <button
-                        className="text-xs font-semibold text-[#E03131] disabled:opacity-50"
+                        className="ml-auto text-xs font-semibold text-[#E03131] disabled:opacity-50"
                         disabled={pending}
                         onClick={() => act(() => cancelOrderAction(o.id), { success: "Order cancelled" })}
                       >
@@ -362,9 +360,9 @@ export function OrderFood({
                       </button>
                     ) : null}
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           </section>
         ) : null}
       </div>
@@ -391,7 +389,7 @@ export function OrderFood({
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-ink-muted">Use the + buttons to build one order — lunch and dinner can go together.</p>
+          <p className="mt-3 text-sm text-ink-muted">Use the + buttons to build your order — lunch and dinner are placed as separate orders.</p>
         )}
         {place ? (
           <p className="mt-4 flex items-start gap-2 rounded-2xl bg-[#F4F1FF] px-3 py-2 text-sm dark:bg-[#1c1a2e]">
@@ -419,15 +417,24 @@ export function OrderFood({
 
       {lines.length ? (
         <div
-          className="fixed inset-x-0 z-30 mx-auto flex w-[min(100%-1rem,520px)] items-center gap-2 rounded-full bg-[#0B0B0F] px-2 py-2 text-white shadow-xl lg:hidden"
+          className="fixed inset-x-0 z-30 mx-auto flex w-[min(100%-1rem,520px)] items-center gap-2.5 rounded-[2rem] bg-[#0B0B0F] px-3 py-3 text-white shadow-xl lg:hidden"
           style={{ bottom: "calc(max(0.75rem, env(safe-area-inset-bottom)) + 5rem)" }}
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3DDC97] text-sm font-bold text-[#0B0B0F]">{totalQty}</span>
-          <span className="min-w-0 flex-1 truncate text-sm">
-            {lines.length} item{lines.length > 1 ? "s" : ""} · <span className="tnum">{taka(total)}</span>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#3DDC97] text-xl font-extrabold text-[#0B0B0F]">{totalQty}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[17px] font-bold leading-tight">
+              {lines.length} item{lines.length > 1 ? "s" : ""} · <span className="tnum">{taka(total)}</span>
+            </span>
+            <span className="mt-0.5 block whitespace-nowrap text-[12.5px] leading-tight">
+              <span className="text-white/55">After delivery: </span>
+              <span className={cn("tnum font-bold", after < 0 ? "text-[#FF8A8A]" : "text-[#3DDC97]")}>{signedTaka(after)}</span>
+            </span>
           </span>
-          <span className="tnum shrink-0 text-[11px] font-semibold text-[#FF8A8A]">After delivery {signedTaka(after)}</span>
-          <button className="btn cta h-10 shrink-0 rounded-full px-3 text-sm" disabled={pending} onClick={placeOrder}>
+          <button
+            className="h-12 shrink-0 rounded-full bg-[#D4FF3A] px-5 text-base font-extrabold text-[#0B0B0F] transition hover:bg-[#c6f020] disabled:opacity-50"
+            disabled={pending}
+            onClick={placeOrder}
+          >
             Place order
           </button>
         </div>

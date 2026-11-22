@@ -7,6 +7,8 @@ export type ActivityItem =
   | {
       kind: "order";
       id: string;
+      /** Human order number, shown as #HF000001. */
+      number: number;
       at: string;
       /** Joined item titles, e.g. "Chicken Curry, Beef Polao" (kept for compact lists). */
       title: string;
@@ -90,6 +92,7 @@ export async function getMemberSummary(userId: string): Promise<MemberSummary> {
       return {
         kind: "order",
         id: o.id,
+        number: o.number,
         at: o.createdAt.toISOString(),
         title: lines.map((l) => l.title).join(", ") || "Order",
         lines,

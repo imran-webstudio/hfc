@@ -114,8 +114,17 @@ async function createOrderWithItems(
   for (const it of args.items) await lockGroupStock(tx, it.option.groupId, args.date);
   for (const it of args.items) await assertPortionCap(tx, it.option, args.date, it.quantity);
   const amount = args.items.reduce((s, i) => s + i.subtotal, 0);
+  // Human order number (#HF000001, #HF000002, ...): the shared counter row is
+  // incremented inside the caller's transaction, so numbers are sequential
+  // and never repeat.
+  const counter = await tx.counter.upsert({
+    where: { id: "order" },
+    create: { id: "order", value: 1 },
+    update: { value: { increment: 1 } },
+  });
   const order = await tx.order.create({
     data: {
+      number: counter.value,
       userId: args.userId,
       officeId: args.officeId,
       mealDate: args.date,
@@ -141,11 +150,44 @@ async function createOrderWithItems(
 }
 
 /**
- * Member places ONE multi-item order (spec §14.1): every dish in this submission —
- * lunch and/or dinner — lands under a single Order ID with one grand total.
- * Cutoffs/day-offs are checked per slot; any failure rejects the whole order.
- * There is deliberately no wallet-due limit (spec §6.10 allows negative balances)
- * and no one-order-per-slot restriction.
+ * Create one order per slot (Lunch first, then Dinner) inside the caller's
+ * transaction. A member can pick lunch and dinner dishes in one submission,
+ * but each slot becomes its OWN order with its own #HF number — kitchen
+ * packing, delivery and payment are tracked per slot. Stock validation for
+ * every group runs inside the same transaction, so a failure anywhere
+ * still rejects the whole submission (all-or-nothing).
+ */
+async function createOrdersBySlot(
+  tx: Prisma.TransactionClient,
+  args: {
+    userId: string;
+    officeId: string;
+    date: string;
+    items: LoadedItem[];
+    note?: string | null;
+    placedById?: string | null;
+  },
+) {
+  const groups = new Map<Slot, LoadedItem[]>();
+  for (const it of args.items) {
+    const g = groups.get(it.option.slot);
+    if (g) g.push(it);
+    else groups.set(it.option.slot, [it]);
+  }
+  const orders = [];
+  for (const slot of ["LUNCH", "DINNER"] as Slot[]) {
+    const g = groups.get(slot);
+    if (g?.length) orders.push(await createOrderWithItems(tx, { ...args, items: g }));
+  }
+  return orders;
+}
+
+/**
+ * Member orders from the home page: lunch and/or dinner dishes in a single
+ * submission, placed as a separate order per slot (see createOrdersBySlot).
+ * Cutoffs/day-offs are checked per slot; any failure rejects the whole
+ * submission. There is deliberately no wallet-due limit (spec §6.10 allows
+ * negative balances).
  */
 export async function placeMemberOrder(viewer: Viewer, input: { items: OrderItemInput[]; date: string }) {
   validateDate(input.date, { allowPast: false });
@@ -158,7 +200,7 @@ export async function placeMemberOrder(viewer: Viewer, input: { items: OrderItem
   }
   return prisma.$transaction(
     (tx) =>
-      createOrderWithItems(tx, {
+      createOrdersBySlot(tx, {
         userId: viewer.id,
         officeId: viewer.zoneId!,
         date: input.date,
@@ -183,7 +225,7 @@ export async function placeAdminOrder(
   if (!canManageOffice(actor, officeId)) throw new UserError("You can't place orders for that location.");
   return prisma.$transaction(
     (tx) =>
-      createOrderWithItems(tx, {
+      createOrdersBySlot(tx, {
         userId: member.id,
         officeId,
         date: input.date,

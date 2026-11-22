@@ -22,6 +22,7 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || "admin@hfc.example";
 
 async function main() {
   console.log("Wiping existing data…");
+  await prisma.counter.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.ledgerEntry.deleteMany();
   await prisma.order.deleteMany();
@@ -285,6 +286,7 @@ async function main() {
     { title: "Beef Polao", amount: 140, ago: 70 },
     { title: "Beef Polao", amount: 140, ago: 73 },
   ];
+  let orderNo = 0;
   // normalise so there are exactly ten ৳100 / five ৳140 / two ৳90 / one ৳150 live orders
   const live = history.filter((h) => !h.cancelled);
   const target = [...Array(10).fill(100), ...Array(5).fill(140), ...Array(2).fill(90), 150];
@@ -293,6 +295,7 @@ async function main() {
     const mealDate = dayStr(-h.ago);
     await prisma.order.create({
       data: {
+        number: ++orderNo,
         userId: admin.id,
         officeId: offices[AMBON],
         mealDate,
@@ -348,6 +351,7 @@ async function main() {
     const amount = opt.price * qty;
     await prisma.order.create({
       data: {
+        number: ++orderNo,
         userId: user.id,
         officeId: opt.officeId,
         mealDate: dayStr(off),
@@ -400,6 +404,7 @@ async function main() {
   // one stocked-out dish for today (restock it from Menu → Live)
   await prisma.stockOut.create({ data: { optionId: optionIds[`${AMBON}|1`], date: dayStr(0) } });
 
+  await prisma.counter.upsert({ where: { id: "order" }, create: { id: "order", value: orderNo }, update: { value: orderNo } });
   console.log(`Seeded. SUPER_ADMIN: ${ADMIN_EMAIL}  (dev login lists every seeded user)`);
 }
 

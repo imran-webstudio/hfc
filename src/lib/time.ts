@@ -55,6 +55,12 @@ export function fmtDay(dateStr: string): string {
   return `${WEEKDAYS_SHORT[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`;
 }
 
+/** "22 Nov 2026" */
+export function fmtDayFull(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 /** "14 Nov" */
 export function fmtShort(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00Z`);

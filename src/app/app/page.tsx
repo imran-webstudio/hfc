@@ -58,13 +58,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
   const existing = mine.map((o) => ({
     id: o.id,
-    title: o.items.map((i) => i.title).join(", ") || "Order",
-    quantity: o.items.reduce((q, i) => q + i.quantity, 0),
-    itemCount: o.items.length,
+    number: o.number,
+    // One order holds one slot only (orders are placed per slot), so the
+    // first item's slot is the order's slot.
+    slot: o.items[0]?.slot ?? ("LUNCH" as const),
+    placedAt: o.createdAt.toISOString(),
+    itemsText: o.items.map((i) => `${i.title} × ${i.quantity}`).join(", ") || "Order",
     amount: o.amount,
     status: o.status,
     paymentStatus: o.paymentStatus,
-    imageUrl: o.items[0]?.option?.imageUrl ?? null,
   }));
 
   return (

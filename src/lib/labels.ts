@@ -21,3 +21,8 @@ const LABELS: Record<string, string> = {
 export function statusLabel(value: string): string {
   return LABELS[value] ?? value;
 }
+
+/** Human order number as shown to members and staff: #HF000001. */
+export function orderNumberLabel(number: number): string {
+  return `#HF${String(number).padStart(6, "0")}`;
+}

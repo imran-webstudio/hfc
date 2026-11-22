@@ -222,6 +222,7 @@ model SavedMeal {
 // independent (spec §6.8): delivery never charges; payment is a separate staff action.
 model Order {
   id            String        @id @default(cuid())
+  number        Int           @unique // human order number, shown as #HF000001, auto-increments from 1
   userId        String
   officeId      String
   mealDate      String // YYYY-MM-DD (Asia/Dhaka)
@@ -261,6 +262,12 @@ model OrderItem {
 
   @@index([orderId])
   @@index([optionId])
+}
+
+/** Named monotonic counters (e.g. id "order" → the next #HF order number). */
+model Counter {
+  id    String @id
+  value Int    @default(0)
 }
 
 model LedgerEntry {

@@ -13,7 +13,7 @@ export default async function HistoryPage() {
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">My orders</h1>
       <p className="mb-5 text-sm text-ink-muted">Your orders, deliveries, deposits and wallet charges. A negative balance is allowed.</p>
       <StatsGrid s={summary} />
-      <ActivityList items={summary.activity} heading="All activity" />
+      <ActivityList items={summary.activity} heading="All Activities" />
     </div>
   );
 }
