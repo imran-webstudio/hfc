@@ -124,7 +124,7 @@ export function DashboardHome({
         <StatTile label="Portions to Pack" value={stats.portions} icon={<Package className="h-[23px] w-[23px]" />} className="bg-[#0B0B0F] text-white dark:bg-[#1D1D22]" labelClass="text-white/70" />
         <StatTile label="Delivered" value={stats.delivered} icon={<CheckCircle2 className="h-[23px] w-[23px]" />} className="bg-[#E4F5E4]" labelClass="text-[#2E7D32]" valueClass="text-[#1E9E4A]" iconClass="text-[#1E9E4A]" />
         <StatTile label="Pending" value={stats.pending} icon={<Clock className="h-[23px] w-[23px]" />} className="bg-[#FBF0DC]" labelClass="text-[#B57E1E]" valueClass="text-[#D9930D]" iconClass="text-[#D9930D]" />
-        <StatTile label="Total Cash Paid" value={taka(stats.cashPaid)} icon={<Banknote className="h-[23px] w-[23px]" />} className="bg-[#F2F2F4]" labelClass="text-[#55565C]" valueClass="text-[#111114]" iconClass="text-[#55565C]" />
+        <StatTile label="Total Cash Received" value={taka(stats.cashPaid)} icon={<Banknote className="h-[23px] w-[23px]" />} className="bg-[#F2F2F4]" labelClass="text-[#55565C]" valueClass="text-[#111114]" iconClass="text-[#55565C]" />
         <StatTile label="Total Sale" value={taka(stats.totalSales)} icon={<TrendingUp className="h-[23px] w-[23px]" />} className="bg-[#5B4CF5] text-white" labelClass="text-white/85" />
       </div>
 

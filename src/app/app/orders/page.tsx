@@ -1,12 +1,15 @@
+import { redirect } from "next/navigation";
 import { ActivityList } from "@/components/member/activity-list";
 import { StatsGrid } from "@/components/member/stats-grid";
-import { requireViewer } from "@/lib/session";
+import { profileComplete, requireViewer } from "@/lib/session";
 import { getMemberSummary } from "@/server/summary";
 
 export const metadata = { title: "Your history" };
 
 export default async function HistoryPage() {
   const viewer = await requireViewer();
+  // First-time members stay on the Profile tab until setup is done (see layout).
+  if (!viewer.isStaff && !profileComplete(viewer)) redirect("/app/profile");
   const summary = await getMemberSummary(viewer.id);
   return (
     <div>

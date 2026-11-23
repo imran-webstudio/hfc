@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import {
   addFloorAction,
   addManagerAction,
@@ -12,7 +12,6 @@ import {
   removeManagerAction,
   saveLunchCutoffAction,
   setOfficeActiveAction,
-  updateFloorAction,
   updateOfficeAction,
 } from "@/actions/admin-team";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
@@ -51,7 +50,7 @@ export function NewLocationForm() {
       </div>
       <div>
         <label className="field-label" htmlFor="loc-cutoff">Order cutoff (24h, Asia/Dhaka)</label>
-        <input id="loc-cutoff" required className="input font-mono" placeholder="12:00" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+        <input id="loc-cutoff" required type="time" className="input" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
       </div>
       <button type="submit" className="btn btn-spice" disabled={pending}>
         Create location
@@ -68,34 +67,74 @@ export function LocationCard({ office }: { office: LocationRow }) {
   const { act, pending } = useAct();
   const [cutoff, setCutoff] = useState(office.lunchCutoff);
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editName, setEditName] = useState(office.name);
   const [editAddress, setEditAddress] = useState(office.address ?? "");
   const [newFloor, setNewFloor] = useState("");
-  const [floorEdits, setFloorEdits] = useState<Record<string, string>>({});
   const dirty = cutoff.trim() !== office.lunchCutoff;
-  const buildingDirty = editName.trim() !== office.name || editAddress.trim() !== (office.address ?? "");
 
   return (
     <li className="surface-card rounded-3xl p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-display text-sm font-bold">{office.name}</p>
-          {office.address ? <p className="text-[11px] text-ink-muted">{office.address}</p> : null}
+          <p className="font-display text-[17px] font-extrabold">{office.name}</p>
+          {office.address ? <p className="text-xs text-ink-muted">{office.address}</p> : null}
         </div>
-        <button
-          role="switch"
-          aria-checked={office.active}
-          aria-label={`${office.name} active`}
-          disabled={pending}
-          onClick={() => act(() => setOfficeActiveAction(office.id, !office.active), { success: office.active ? "Location deactivated" : "Location activated" })}
-          className={cn("flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-bold transition", office.active ? "border-leaf/40 bg-leaf/15 text-leaf" : "border-line text-ink-muted")}
-        >
-          <span className={cn("relative h-4 w-7 rounded-full transition", office.active ? "bg-leaf" : "bg-ink/20")}>
-            <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-[#04201c] transition-all", office.active ? "left-3.5" : "left-0.5 bg-white")} />
-          </span>
-          {office.active ? "Active" : "Inactive"}
-        </button>
+        <div className="relative flex shrink-0 items-center gap-1.5">
+          <button
+            role="switch"
+            aria-checked={office.active}
+            aria-label={`${office.name} active`}
+            disabled={pending}
+            onClick={() => act(() => setOfficeActiveAction(office.id, !office.active), { success: office.active ? "Location deactivated" : "Location activated" })}
+            className={cn("flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-bold transition", office.active ? "border-leaf/40 bg-leaf/15 text-leaf" : "border-line text-ink-muted")}
+          >
+            <span className={cn("relative h-4 w-7 rounded-full transition", office.active ? "bg-leaf" : "bg-ink/20")}>
+              <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-[#04201c] transition-all", office.active ? "left-3.5" : "left-0.5 bg-white")} />
+            </span>
+            {office.active ? "Active" : "Inactive"}
+          </button>
+          <button
+            type="button"
+            aria-label={`More actions for ${office.name}`}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="grid h-8 w-8 place-items-center rounded-full text-ink-muted transition hover:bg-ink/5 hover:text-ink"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+          {menuOpen ? (
+            <>
+              <button type="button" aria-hidden tabIndex={-1} className="fixed inset-0 z-20 cursor-default" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-30 mt-1.5 w-52 rounded-2xl border border-line bg-rice p-1.5 shadow-xl">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#5B4CF5] transition hover:bg-[#5B4CF5]/10"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setEditName(office.name);
+                    setEditAddress(office.address ?? "");
+                    setEditOpen(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" /> Edit location
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#E03131] transition hover:bg-[#E03131]/10"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setConfirmDelete(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Remove location
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <form
@@ -107,7 +146,7 @@ export function LocationCard({ office }: { office: LocationRow }) {
       >
         <label className="field-label" htmlFor={`cut-${office.id}`}>Lunch cutoff (24h)</label>
         <div className="flex gap-2">
-          <input id={`cut-${office.id}`} className="input font-mono" placeholder="12:00" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+          <input id={`cut-${office.id}`} type="time" className="input" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
           <button type="submit" className="btn btn-ghost" disabled={!dirty || pending}>
             Save cutoff
           </button>
@@ -132,89 +171,85 @@ export function LocationCard({ office }: { office: LocationRow }) {
         )}
       </div>
 
-      {/* Building edit + delete (spec §11.1). Delete is refused server-side while
-          members or orders reference the building. */}
-      <form
-        className="mt-4 border-t border-line pt-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          act(() => updateOfficeAction(office.id, { name: editName, address: editAddress }), { success: "Building updated" });
-        }}
-      >
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Building</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <input className="input" aria-label="Building name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-          <input className="input" aria-label="Building address" placeholder="Address" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
-        </div>
-        <div className="mt-2 flex gap-2">
-          <button type="submit" className="btn btn-ghost btn-sm" disabled={!buildingDirty || pending}>
-            Save building
-          </button>
-          <button type="button" className="btn btn-ghost btn-sm text-[#E03131]" disabled={pending} onClick={() => setConfirmDelete(true)}>
-            Delete building
-          </button>
-        </div>
-      </form>
-
-      {/* Dynamic floors for this building (spec §11.2). */}
+      {/* Floors sit directly under Location · Cutoff · Managers (owner's layout).
+          Editing/removing the location itself lives in the ⋮ menu by Active. */}
       <div className="mt-4 border-t border-line pt-3">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Floors{office.floors.length ? ` · ${office.floors.length}` : ""}</p>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Floors{office.floors.length ? ` · ${office.floors.length}` : ""}</p>
+          <p className="text-[11px] text-ink-muted">Manage floors for this location</p>
+        </div>
         {office.floors.length === 0 ? <p className="mt-2 text-[11px] text-ink-muted">No floors yet — add the first one below.</p> : null}
-        <ul className="mt-2 space-y-1.5">
-          {office.floors.map((f) => {
-            const val = floorEdits[f.id] ?? f.name;
-            return (
-              <li key={f.id} className="flex items-center gap-2">
-                <input
-                  className="input h-9 flex-1"
-                  aria-label={`Floor name for ${f.name}`}
-                  value={val}
-                  onChange={(e) => setFloorEdits((s) => ({ ...s, [f.id]: e.target.value }))}
-                />
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={pending || val.trim() === f.name}
-                  onClick={() => act(() => updateFloorAction(f.id, val), { success: "Floor updated" })}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-[#E03131]"
-                  disabled={pending}
-                  onClick={() => act(() => deleteFloorAction(f.id), { success: "Floor deleted" })}
-                >
-                  Delete
-                </button>
-              </li>
-            );
-          })}
+        <ul className="mt-2.5 space-y-2">
+          {office.floors.map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5">
+              <span className="text-sm font-bold">{f.name}</span>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#E03131]/10 px-3.5 py-1.5 text-xs font-bold text-[#E03131] transition hover:bg-[#E03131]/20 disabled:opacity-50"
+                disabled={pending}
+                onClick={() => act(() => deleteFloorAction(f.id), { success: "Floor deleted" })}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
         </ul>
         <form
-          className="mt-2 flex gap-2"
+          className="mt-3 flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             act(() => addFloorAction(office.id, newFloor), { success: "Floor added", onOk: () => setNewFloor("") });
           }}
         >
-          <input className="input h-9 flex-1" placeholder="New floor — any label, e.g. 3 or Rooftop" value={newFloor} onChange={(e) => setNewFloor(e.target.value)} />
-          <button type="submit" className="btn btn-leaf btn-sm" disabled={pending || !newFloor.trim()}>
-            Add floor
+          <input className="input h-11 flex-1 rounded-full px-4" placeholder="Enter floor name/number" value={newFloor} onChange={(e) => setNewFloor(e.target.value)} />
+          <button
+            type="submit"
+            aria-label="Add floor"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#5B4CF5] text-white transition hover:bg-[#4A3EDB] disabled:opacity-50"
+            disabled={pending || !newFloor.trim()}
+          >
+            <Plus className="h-5 w-5" />
           </button>
         </form>
+        <p className="mt-1.5 text-[11px] text-ink-muted">New floor will be added immediately.</p>
       </div>
 
       <ConfirmDialog
         open={confirmDelete}
-        title={`Delete ${office.name}?`}
-        text="The building can only be deleted when no members are assigned and it has no orders. Its floors, managers and menu copies will be removed."
-        confirmLabel="Delete building"
+        title={`Remove ${office.name}?`}
+        text="This removes the location with its floors and managers. It can only be removed when no members are assigned to it and it has no orders — if food delivery has just stopped here, deactivating it instead keeps the history."
+        confirmLabel="Remove location"
         danger
         busy={pending}
         onClose={() => setConfirmDelete(false)}
-        onConfirm={() => act(() => deleteOfficeAction(office.id), { success: "Building deleted", onOk: () => setConfirmDelete(false) })}
+        onConfirm={() => act(() => deleteOfficeAction(office.id), { success: "Location removed", onOk: () => setConfirmDelete(false) })}
       />
+      {editOpen ? (
+        <Modal open onClose={() => setEditOpen(false)} title="Edit location" subtitle={office.name}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(() => updateOfficeAction(office.id, { name: editName, address: editAddress }), {
+                success: "Location updated",
+                onOk: () => setEditOpen(false),
+              });
+            }}
+          >
+            <div>
+              <label className="field-label" htmlFor={`edit-name-${office.id}`}>Name</label>
+              <input id={`edit-name-${office.id}`} required className="input" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor={`edit-address-${office.id}`}>Address</label>
+              <input id={`edit-address-${office.id}`} className="input" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+            </div>
+            <button type="submit" className="btn btn-spice w-full" disabled={pending || !editName.trim()}>
+              {pending ? "Saving…" : "Save changes"}
+            </button>
+          </form>
+        </Modal>
+      ) : null}
       {open ? <ManagersModal office={office} onClose={() => setOpen(false)} /> : null}
     </li>
   );

@@ -13,6 +13,15 @@ export type Viewer = User & {
   isStaff: boolean;
 };
 
+/**
+ * A member's profile counts as set up only when every field the profile form
+ * requires is present (updateOwnProfile enforces the same all-fields rule).
+ * First-time sign-ins (e.g. a fresh Google account) have none of them.
+ */
+export function profileComplete(v: Pick<User, "employeeId" | "phone" | "zoneId" | "floor" | "desk" | "address">): boolean {
+  return Boolean(v.employeeId && v.phone && v.zoneId && v.floor && v.desk && v.address);
+}
+
 /** Current signed-in, non-banned user (cached per request) or null. */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   const session = await auth();

@@ -24,7 +24,7 @@ export default async function MemberAccountPage({ params }: { params: Promise<{ 
   if (scope && member.zoneId && !scope.includes(member.zoneId)) notFound();
 
   const summary = await getMemberSummary(member.id);
-  const line = [member.employeeId, member.zone?.name, member.email].filter(Boolean).join(" · ");
+  const line = [member.employeeId, member.zone?.name, member.floor ? `F${member.floor}` : null, member.email].filter(Boolean).join(" · ");
 
   return (
     <div className="mx-auto max-w-5xl">

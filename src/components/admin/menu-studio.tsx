@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Slot } from "@prisma/client";
-import { Plus, X } from "lucide-react";
+import { CalendarDays, Plus, RotateCw, X } from "lucide-react";
 import { addWeeklyOptionAction, removeOptionAction, saveCutoffsAction, updateOptionAction } from "@/actions/admin-menu";
 import { PhotoField } from "@/components/admin/photo-field";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { useAct } from "@/components/ui/use-act";
 import { cn } from "@/lib/cn";
 import { taka } from "@/lib/money";
-import { fmtShort, WEEK_ORDER, WEEKDAYS_LONG, WEEKDAYS_SHORT } from "@/lib/time";
+import { fmtDayMonth, WEEK_ORDER, WEEKDAYS_LONG, WEEKDAYS_SHORT } from "@/lib/time";
 
 export type WeekDish = {
   id: string;
@@ -90,8 +90,18 @@ export function MenuStudio({
       <section className="rounded-3xl border border-line bg-rice p-4 sm:p-5">
         <header className="flex items-center justify-between gap-2">
           <h2 className="text-[22px] font-extrabold tracking-tight">Weekly Menu</h2>
-          <span className="rounded-full bg-[#E4F5E4] px-3 py-1.5 text-[13px] font-bold text-[#1E9E4A] dark:bg-[#0E2A1A] dark:text-[#3DD68C]">Recurring</span>
+          <span className="flex items-center gap-1.5 rounded-full bg-[#E4F5E4] px-3 py-1.5 text-[13px] font-bold text-[#1E9E4A] dark:bg-[#0E2A1A] dark:text-[#3DD68C]">
+            <RotateCw className="h-3.5 w-3.5" />
+            Recurring
+          </span>
         </header>
+        {/* The selected day's date sits right under the title, per the design reference. */}
+        {weekDates[day] ? (
+          <p className="mt-3 flex items-center gap-2.5 text-[26px] font-extrabold tracking-tight text-[#5B4CF5]">
+            <CalendarDays className="h-7 w-7 shrink-0" />
+            {fmtDayMonth(weekDates[day])}
+          </p>
+        ) : null}
         <div className="mt-4 grid grid-cols-4 gap-2.5" role="tablist" aria-label="Weekday">
           {WEEK_ORDER.map((wd) => (
             <button
@@ -112,12 +122,8 @@ export function MenuStudio({
             </button>
           ))}
         </div>
-        <div className="mt-3.5 flex items-baseline justify-between gap-3">
+        <div className="mt-4 border-t border-line pt-3.5">
           <p className="text-[15px] text-ink-muted">নির্বাচিত দিনের Menu নিচে দেখাবে।</p>
-          <p className="shrink-0 text-sm text-ink-muted">
-            {WEEKDAYS_LONG[day]}
-            {weekDates[day] ? ` · ${fmtShort(weekDates[day])}` : ""}
-          </p>
         </div>
         <p className="sr-only">Meal day used for highlighting: {today}</p>
       </section>

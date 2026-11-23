@@ -1,13 +1,15 @@
+import { Sparkles } from "lucide-react";
 import { ProfileForm } from "@/components/member/profile-form";
 import { SignOutButton } from "@/components/shell/account";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { requireViewer } from "@/lib/session";
+import { profileComplete, requireViewer } from "@/lib/session";
 import { listFloors, listOffices } from "@/server/offices";
 
 export const metadata = { title: "Your profile" };
 
 export default async function ProfilePage() {
   const viewer = await requireViewer();
+  const firstTime = !viewer.isStaff && !profileComplete(viewer);
   const offices = await listOffices({ activeOnly: true });
   const floors = await listFloors();
   const floorsByOffice: Record<string, string[]> = {};
@@ -16,7 +18,17 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-lg">
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">Profile</h1>
       <p className="mb-5 text-sm text-ink-muted">Update your desk, floor, and phone. Your catering zone follows the office you select.</p>
+      {firstTime ? (
+        <div className="mb-5 rounded-2xl border border-[#5B4CF5]/30 bg-[#5B4CF5]/10 px-4 py-3.5">
+          <p className="flex items-center gap-2 text-[15px] font-bold">
+            <Sparkles className="h-4.5 w-4.5 shrink-0 text-[#5B4CF5]" />
+            Welcome to HomeFlavour Catering!
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">Set up your profile first — after saving, the main menu opens and you can place your first order.</p>
+        </div>
+      ) : null}
       <ProfileForm
+        firstTime={firstTime}
         offices={offices.map((o) => ({ id: o.id, name: o.name }))}
         floorsByOffice={floorsByOffice}
         zoneName={viewer.zone?.name ?? null}

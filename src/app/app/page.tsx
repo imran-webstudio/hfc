@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
 import { OrderFood, type FoodSlot } from "@/components/member/slot-menu";
 import { config } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
-import { requireViewer } from "@/lib/session";
+import { profileComplete, requireViewer } from "@/lib/session";
 import { WEEKDAYS_LONG, addDays, fmtFullDate, hhmmToMinutes, isDateStr, minutesNow, todayStr, weekdayOf } from "@/lib/time";
 import { optionsForDate } from "@/server/menu";
 import { slotState } from "@/server/orders";
@@ -20,6 +21,9 @@ function closesLabel(date: string, cutoff: string, open: boolean) {
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const viewer = await requireViewer();
+  // Page-level twin of the layout gate: layouts don't re-run on soft
+  // navigation, so a first-time member tapping Home must bounce here too.
+  if (!viewer.isStaff && !profileComplete(viewer)) redirect("/app/profile");
   const { date: dateParam } = await searchParams;
   const today = todayStr();
   const max = addDays(today, config.maxAdvanceDays);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { saveProfileAction } from "@/actions/member";
 import { useAct } from "@/components/ui/use-act";
 
@@ -10,10 +11,13 @@ type Props = {
   floorsByOffice?: Record<string, string[]>;
   initial: { employeeId: string; phone: string; officeId: string; floor: string; desk: string; address: string };
   zoneName: string | null;
+  /** First-time setup: after saving, continue to the main menu. */
+  firstTime?: boolean;
 };
 
-export function ProfileForm({ offices, floorsByOffice, initial, zoneName }: Props) {
+export function ProfileForm({ offices, floorsByOffice, initial, zoneName, firstTime }: Props) {
   const { act, pending } = useAct();
+  const router = useRouter();
   const [v, setV] = useState(initial);
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV((s) => ({ ...s, [k]: e.target.value }));
   const floorOptions = v.officeId ? floorsByOffice?.[v.officeId] ?? [] : [];
@@ -28,7 +32,10 @@ export function ProfileForm({ offices, floorsByOffice, initial, zoneName }: Prop
       className="surface-card space-y-4 rounded-2xl p-5"
       onSubmit={(e) => {
         e.preventDefault();
-        act(() => saveProfileAction(v), { success: "Profile saved" });
+        act(() => saveProfileAction(v), {
+          success: firstTime ? "Profile saved — welcome!" : "Profile saved",
+          onOk: firstTime ? () => router.push("/app") : undefined,
+        });
       }}
     >
       <div>
@@ -73,7 +80,7 @@ export function ProfileForm({ offices, floorsByOffice, initial, zoneName }: Prop
         <input id="address" className="input" required placeholder="e.g. Ambon Complex, Dhaka 1212" value={v.address} onChange={set("address")} />
       </div>
       <button type="submit" className="btn btn-spice w-full py-3" disabled={pending}>
-        {pending ? "Saving…" : "Save changes"}
+        {pending ? "Saving…" : firstTime ? "Save & continue" : "Save changes"}
       </button>
       <p className="text-[11px] text-ink-muted">
         Catering zone: <b className="text-ink">{zoneName ?? "Not set"}</b>

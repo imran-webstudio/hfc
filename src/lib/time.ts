@@ -61,6 +61,12 @@ export function fmtDayFull(dateStr: string): string {
   return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+/** "23 November" */
+export function fmtDayMonth(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]}`;
+}
+
 /** "14 Nov" */
 export function fmtShort(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00Z`);

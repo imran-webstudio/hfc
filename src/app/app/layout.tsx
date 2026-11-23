@@ -8,6 +8,9 @@ import { requireViewer } from "@/lib/session";
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const viewer = await requireViewer();
+  // NOTE: the first-time profile gate lives in the member PAGES (home +
+  // orders), not here — a redirect() thrown from this layout during the
+  // streamed sign-in navigation leaves the client on a blank shell.
   const negative = viewer.balance < 0;
   const money = negative ? signedTaka(viewer.balance) : taka(viewer.balance);
   return (
