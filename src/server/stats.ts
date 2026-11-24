@@ -33,7 +33,7 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
       include: {
         office: { select: { id: true, name: true } },
         items: { include: { option: { select: { imageUrl: true } } } },
-        user: { select: { id: true, name: true, floor: true, desk: true } },
+        user: { select: { id: true, name: true, floor: true, company: true } },
       },
       orderBy: [{ createdAt: "asc" }],
     }),
@@ -56,7 +56,7 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
   // Pack grouped by dish (slot + title) across all offices in scope, with a
   // per-office breakdown inside each dish — offices sorted by portions, dishes
   // sorted by highest portions first.
-  type PackPerson = { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string };
+  type PackPerson = { orderId: string; name: string; floor: string | null; company: string | null; quantity: number; status: string };
   type PackOffice = { officeName: string; orders: number; portions: number; amount: number; people: PackPerson[] };
   const pack = new Map<
     string,
@@ -87,7 +87,7 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
         orderId: o.id,
         name: o.user.name ?? "Member",
         floor: o.user.floor,
-        desk: o.user.desk,
+        company: o.user.company,
         quantity: item.quantity,
         status: o.status,
       });
@@ -269,7 +269,7 @@ export async function distributionOrders(scope: OfficeScope, f: DistributionFilt
       office: { select: { name: true } },
       placedBy: { select: { name: true } },
       items: true,
-      user: { select: { id: true, name: true, employeeId: true, floor: true, desk: true, building: true } },
+      user: { select: { id: true, name: true, employeeId: true, floor: true, company: true, building: true } },
     },
   });
   // Spec §6.12 delivered sorting: Unpaid first (latest delivered first), then Paid

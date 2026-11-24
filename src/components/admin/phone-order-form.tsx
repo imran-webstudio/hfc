@@ -8,7 +8,7 @@ import { useAct } from "@/components/ui/use-act";
 import { addDays } from "@/lib/time";
 import { taka } from "@/lib/money";
 
-type Member = { id: string; name: string | null; employeeId: string | null; floor: string | null; desk: string | null; zoneId: string | null };
+type Member = { id: string; name: string | null; employeeId: string | null; floor: string | null; company: string | null; zoneId: string | null };
 type Meal = { id: string; slot: string; title: string; price: number; available: boolean; label: string };
 type Row = { optionId: string; quantity: number };
 
@@ -108,7 +108,7 @@ function PhoneOrderForm({ today, maxDays, onClose }: { today: string; maxDays: n
           </div>
         ) : (
           <>
-            <input id="po-member" className="input" placeholder="Search name, email, ID, desk…" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
+            <input id="po-member" className="input" placeholder="Search name, email, ID, company…" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} />
             {focused && results.length > 0 ? (
               <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-rice p-1 shadow-2xl">
                 {results.map((m) => (

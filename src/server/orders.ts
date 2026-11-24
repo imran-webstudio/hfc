@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserError } from "@/lib/action";
 import { config } from "@/lib/config";
 import { addDays, cutoffPassed, isDateStr, todayStr } from "@/lib/time";
-import { canManageOffice, type Viewer } from "@/lib/session";
+import { canManageOffice, profileComplete, type Viewer } from "@/lib/session";
 import { assertPortionCap, lockGroupStock } from "@/server/menu";
 import { applyLedger } from "@/server/wallet";
 import { writeAudit } from "@/server/audit";
@@ -191,6 +191,10 @@ async function createOrdersBySlot(
  */
 export async function placeMemberOrder(viewer: Viewer, input: { items: OrderItemInput[]; date: string }) {
   validateDate(input.date, { allowPast: false });
+  // No ordering with an incomplete profile: building, floor and company must
+  // be set so delivery can find the member (the pages gate this too; this is
+  // the server-side guarantee).
+  if (!profileComplete(viewer)) throw new UserError("Complete your profile first — building, floor and company are required before you can order.");
   if (!viewer.zoneId) throw new UserError("Choose your office in Profile first.");
   const items = await loadItems(input.items, input.date);
   for (const it of items) {

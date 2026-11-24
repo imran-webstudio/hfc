@@ -11,7 +11,7 @@ const themeBoot = `(function(){try{var k="hfc-theme";var s=localStorage.getItem(
 
 export const metadata: Metadata = {
   title: { default: "Home Flavour Catering", template: "%s · Home Flavour Catering" },
-  description: "Office lunch, one tap. Order before cutoff, delivered to your desk.",
+  description: "Office lunch, one tap. Order before cutoff, delivered to your floor.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },

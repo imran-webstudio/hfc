@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRight, Search, Wallet, X } from "lucide-react";
+import { Check, ChevronRight, Search, Wallet, X } from "lucide-react";
 import { depositAction } from "@/actions/admin-users";
 import { useAct } from "@/components/ui/use-act";
 import { signedTaka, taka } from "@/lib/money";
@@ -19,6 +19,7 @@ export type UserRow = {
   employeeId: string | null;
   officeName: string | null;
   floor: string | null;
+  company: string | null;
 };
 
 const AVATARS = [
@@ -51,27 +52,33 @@ export function UsersBoard({ rows, controls, totals }: { rows: UserRow[]; contro
 
   return (
     <div>
-      <div className="mb-4">
-        <div className="surface-card flex w-full items-stretch rounded-[2rem] px-5 py-5">
-          <div className="flex-1">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">Users & deposits</h1>
+        <button type="button" className="btn shrink-0 bg-[#5B4CF5] text-white hover:bg-[#4636e0]" onClick={() => setPayOpen(true)}>
+          <Wallet className="h-4 w-4" /> Add Money
+        </button>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-3 rounded-[1.75rem] bg-[#FDECEC] px-5 py-5 dark:bg-[#E03131]/15">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#E03131] text-xl font-extrabold text-white">!</span>
+          <div>
             <p className="text-sm font-medium text-ink-muted">Due</p>
-            <p className="tnum text-[34px] font-extrabold leading-tight text-[#E03131]">{taka(due)}</p>
+            <p className="tnum text-[30px] font-extrabold leading-tight text-[#E03131]">{taka(due)}</p>
           </div>
-          <div className="mx-4 w-px bg-line" />
-          <div className="flex-1">
+        </div>
+        <div className="flex items-center gap-3 rounded-[1.75rem] bg-[#E4F5EC] px-5 py-5 dark:bg-[#0F9B8E]/15">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#12B76A] text-white">
+            <Check className="h-6 w-6" strokeWidth={3} />
+          </span>
+          <div>
             <p className="text-sm font-medium text-ink-muted">Credit</p>
-            <p className="tnum text-[34px] font-extrabold leading-tight text-[#0F9B8E]">{taka(credit)}</p>
+            <p className="tnum text-[30px] font-extrabold leading-tight text-[#0B7A55] dark:text-[#12B76A]">{taka(credit)}</p>
           </div>
         </div>
       </div>
 
       {controls ? <div className="mb-3">{controls}</div> : null}
-
-      <div className="mb-3 hidden justify-end lg:flex">
-        <button type="button" className="btn bg-[#D4FF3A] text-[#0B0B0F] hover:bg-[#c6f020]" onClick={() => setPayOpen(true)}>
-          <Wallet className="h-4 w-4" /> Add money
-        </button>
-      </div>
 
       {shown.length === 0 ? (
         <p className="rounded-3xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-muted">No members match these filters.</p>
@@ -83,10 +90,6 @@ export function UsersBoard({ rows, controls, totals }: { rows: UserRow[]; contro
         </ul>
       )}
 
-      <button type="button" className="btn fixed bottom-[5.5rem] left-1/2 z-30 -translate-x-1/2 rounded-full bg-[#D4FF3A] px-5 text-[#0B0B0F] shadow-lg hover:bg-[#c6f020] lg:hidden" onClick={() => setPayOpen(true)}>
-        <Wallet className="h-4 w-4" /> Add money
-      </button>
-
       {payOpen ? <AddMoney rows={rows.filter((r) => !r.banned)} onClose={() => setPayOpen(false)} /> : null}
     </div>
   );
@@ -94,7 +97,6 @@ export function UsersBoard({ rows, controls, totals }: { rows: UserRow[]; contro
 
 function UserRowLink({ u }: { u: UserRow }) {
   const color = avatar(u.name, u.banned);
-  const meta = [u.employeeId ? `ID ${u.employeeId}` : null, u.officeName, u.floor ? `F${u.floor}` : null].filter(Boolean).join(" · ");
   return (
     <li>
       <Link href={`/admin/users/${u.id}`} className="surface-card flex items-center gap-3 rounded-2xl px-3 py-3">
@@ -106,7 +108,12 @@ function UserRowLink({ u }: { u: UserRow }) {
             <span className="truncate font-semibold">{u.name}</span>
             {u.role === "SUPER_ADMIN" ? <span className="shrink-0 rounded-full bg-[#5B4CF5]/15 px-2 py-0.5 text-[10px] font-bold text-[#5B4CF5]">Admin</span> : null}
           </span>
-          <span className="block truncate text-xs text-ink-muted">{meta || "No office yet"}</span>
+          <span className="mt-0.5 block truncate text-[13px] font-medium leading-snug text-ink/80">
+            <span className="text-ink-muted">ID:</span> {u.employeeId ?? "—"} <span className="text-ink-muted">• Office:</span> {u.officeName ?? "—"}
+          </span>
+          <span className="block truncate text-[13px] font-medium leading-snug text-ink/80">
+            <span className="text-ink-muted">Floor:</span> {u.floor ?? "—"} <span className="text-ink-muted">• Company:</span> {u.company ?? "—"}
+          </span>
         </span>
         <BalancePill u={u} />
         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted lg:hidden" />

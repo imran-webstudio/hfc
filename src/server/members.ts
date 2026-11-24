@@ -32,7 +32,7 @@ export function memberWhere(scope: OfficeScope, f: MemberFilters): Prisma.UserWh
         { email: { contains: q, mode: "insensitive" } },
         { employeeId: { contains: q, mode: "insensitive" } },
         { phone: { contains: q, mode: "insensitive" } },
-        { desk: { contains: q, mode: "insensitive" } },
+        { company: { contains: q, mode: "insensitive" } },
       ],
     });
   }
@@ -137,7 +137,7 @@ export type ProfileInput = {
   phone: string;
   officeId: string;
   floor: string;
-  desk: string;
+  company: string;
   address: string;
 };
 
@@ -146,7 +146,7 @@ export async function updateOwnProfile(userId: string, input: ProfileInput) {
     employeeId: input.employeeId.trim(),
     phone: input.phone.trim(),
     floor: input.floor.trim(),
-    desk: input.desk.trim(),
+    company: input.company.trim(),
     address: input.address.trim(),
   };
   if (Object.values(fields).some((v) => !v) || !input.officeId) throw new UserError("Please fill in every field.");
@@ -212,7 +212,7 @@ export async function searchMembers(actor: Viewer, q: string, officeId?: string)
                 { name: { contains: term, mode: "insensitive" } },
                 { email: { contains: term, mode: "insensitive" } },
                 { employeeId: { contains: term, mode: "insensitive" } },
-                { desk: { contains: term, mode: "insensitive" } },
+                { company: { contains: term, mode: "insensitive" } },
               ],
             }
           : {},
@@ -220,6 +220,6 @@ export async function searchMembers(actor: Viewer, q: string, officeId?: string)
     },
     orderBy: { name: "asc" },
     take: 12,
-    select: { id: true, name: true, employeeId: true, floor: true, desk: true, zoneId: true },
+    select: { id: true, name: true, employeeId: true, floor: true, company: true, zoneId: true },
   });
 }

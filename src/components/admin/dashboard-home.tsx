@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { taka } from "@/lib/money";
 import { fmtDay, fmtShort } from "@/lib/time";
 
-export type PackPerson = { orderId: string; name: string; floor: string | null; desk: string | null; quantity: number; status: string };
+export type PackPerson = { orderId: string; name: string; floor: string | null; company: string | null; quantity: number; status: string };
 
 export type PackOfficeRow = { officeName: string; orders: number; portions: number; amount: number; people: PackPerson[] };
 
@@ -292,7 +292,7 @@ function PackList({ items }: { items: PackRow[] }) {
                                 <b>{person.name}</b>
                                 <span className="text-ink-muted">
                                   {" "}
-                                  · {[person.floor ? `Floor ${person.floor}` : null, person.desk ? `Desk ${person.desk}` : null].filter(Boolean).join(" · ") || office.officeName}
+                                  · {[person.floor ? `Floor ${person.floor}` : null, person.company ?? null].filter(Boolean).join(" · ") || office.officeName}
                                 </span>
                               </span>
                               <span className="tnum text-ink-muted">× {person.quantity}</span>

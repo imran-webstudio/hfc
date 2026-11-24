@@ -17,7 +17,7 @@ export default async function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">Profile</h1>
-      <p className="mb-5 text-sm text-ink-muted">Update your desk, floor, and phone. Your catering zone follows the office you select.</p>
+      <p className="mb-5 text-sm text-ink-muted">Update your company, floor, and phone. Your catering zone follows the building you select.</p>
       {firstTime ? (
         <div className="mb-5 rounded-2xl border border-[#5B4CF5]/30 bg-[#5B4CF5]/10 px-4 py-3.5">
           <p className="flex items-center gap-2 text-[15px] font-bold">
@@ -37,7 +37,7 @@ export default async function ProfilePage() {
           phone: viewer.phone ?? "",
           officeId: viewer.zoneId ?? "",
           floor: viewer.floor ?? "",
-          desk: viewer.desk ?? "",
+          company: viewer.company ?? "",
           address: viewer.address ?? "",
         }}
       />

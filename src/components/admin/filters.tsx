@@ -52,30 +52,35 @@ export function FilterSelect({
 export type BalanceFilter = "all" | "due" | "credit" | "zero";
 
 /** Account-balance filter as a row of tinted pills side by side (All / Due / Credit / Zero), URL-driven via ?balance=. */
-export function BalancePills({ value }: { value: BalanceFilter }) {
+export function BalancePills({ value, counts }: { value: BalanceFilter; counts?: Record<BalanceFilter, number> }) {
   const set = useQueryParam();
   const pills: { value: BalanceFilter; label: string; idle: string; active: string }[] = [
-    { value: "all", label: "All", idle: "bg-ink/[0.06] text-ink dark:bg-white/10", active: "bg-[#0B0B0F] text-white ring-1 ring-line" },
+    { value: "all", label: "All", idle: "bg-ink/[0.06] text-ink dark:bg-white/10", active: "bg-[#5B4CF5] text-white" },
     { value: "due", label: "Due", idle: "bg-[#FDE8E8] text-[#E03131]", active: "bg-[#E03131] text-white" },
     { value: "credit", label: "Credit", idle: "bg-[#DFF5EE] text-[#0B7A6E]", active: "bg-[#0F9B8E] text-white" },
     { value: "zero", label: "Zero", idle: "bg-rice text-ink-muted ring-1 ring-line", active: "bg-[#0B0B0F] text-white ring-1 ring-line" },
   ];
   return (
-    <div role="group" aria-label="Account balance" className="flex gap-2">
-      {pills.map((p) => {
-        const isActive = value === p.value;
-        return (
-          <button
-            key={p.value}
-            type="button"
-            aria-pressed={isActive}
-            onClick={() => set("balance", p.value)}
-            className={cn("h-12 flex-1 rounded-full text-[15px] font-semibold transition", isActive ? p.active : p.idle)}
-          >
-            {p.label}
-          </button>
-        );
-      })}
+    <div>
+      <p className="mb-1.5 text-xs font-semibold text-ink-muted">Balance Status</p>
+      <div role="group" aria-label="Account balance" className="flex gap-2">
+        {pills.map((p) => {
+          const isActive = value === p.value;
+          const count = counts?.[p.value];
+          return (
+            <button
+              key={p.value}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => set("balance", p.value)}
+              className={cn("flex h-12 flex-1 flex-col items-center justify-center rounded-2xl leading-tight transition", isActive ? p.active : p.idle)}
+            >
+              <span className="text-[15px] font-semibold">{p.label}</span>
+              {count !== undefined ? <span className={cn("tnum text-xs font-medium", isActive ? "text-white/85" : "opacity-70")}>({count})</span> : null}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

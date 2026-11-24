@@ -9,7 +9,7 @@ type Props = {
   offices: { id: string; name: string }[];
   /** Dynamic floor registry (spec §11.3): floors of the selected building only. */
   floorsByOffice?: Record<string, string[]>;
-  initial: { employeeId: string; phone: string; officeId: string; floor: string; desk: string; address: string };
+  initial: { employeeId: string; phone: string; officeId: string; floor: string; company: string; address: string };
   zoneName: string | null;
   /** First-time setup: after saving, continue to the main menu. */
   firstTime?: boolean;
@@ -48,9 +48,9 @@ export function ProfileForm({ offices, floorsByOffice, initial, zoneName, firstT
       </div>
       <div className="grid grid-cols-[1fr_7rem] gap-3">
         <div>
-          <label className="field-label" htmlFor="office">Office / Building</label>
+          <label className="field-label" htmlFor="office">Building</label>
           <select id="office" className="input" required value={v.officeId} onChange={onOffice}>
-            <option value="">Select office…</option>
+            <option value="">Select building…</option>
             {offices.map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
@@ -72,8 +72,9 @@ export function ProfileForm({ offices, floorsByOffice, initial, zoneName, firstT
         </div>
       </div>
       <div>
-        <label className="field-label" htmlFor="desk">Desk number</label>
-        <input id="desk" className="input" required placeholder="e.g. D-12" value={v.desk} onChange={set("desk")} />
+        <label className="field-label" htmlFor="company">Company / Organisation</label>
+        <input id="company" className="input" required placeholder="e.g. Softvence" value={v.company} onChange={set("company")} />
+        <p className="mt-1 text-[10px] leading-snug text-ink-muted">The company you work for in this building — it is shown on your orders so delivery can find you.</p>
       </div>
       <div>
         <label className="field-label" htmlFor="address">Address</label>

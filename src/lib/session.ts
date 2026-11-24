@@ -18,8 +18,8 @@ export type Viewer = User & {
  * requires is present (updateOwnProfile enforces the same all-fields rule).
  * First-time sign-ins (e.g. a fresh Google account) have none of them.
  */
-export function profileComplete(v: Pick<User, "employeeId" | "phone" | "zoneId" | "floor" | "desk" | "address">): boolean {
-  return Boolean(v.employeeId && v.phone && v.zoneId && v.floor && v.desk && v.address);
+export function profileComplete(v: Pick<User, "employeeId" | "phone" | "zoneId" | "floor" | "company" | "address">): boolean {
+  return Boolean(v.employeeId && v.phone && v.zoneId && v.floor && v.company && v.address);
 }
 
 /** Current signed-in, non-banned user (cached per request) or null. */

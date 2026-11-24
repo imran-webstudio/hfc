@@ -30,7 +30,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     memberId: o.user.id,
     memberName: o.user.name ?? "Member",
     employeeId: o.user.employeeId,
-    place: [o.office.name, o.user.floor ? `F${o.user.floor}` : null, o.user.desk ? `Desk ${o.user.desk}` : null].filter(Boolean).join(" · "),
+    place: [o.office.name, o.user.floor ? `F${o.user.floor}` : null, o.user.company ?? null].filter(Boolean).join(" · "),
     officeId: o.officeId,
     mealDate: o.mealDate,
     lines: o.items.map((i) => ({ title: i.title, slot: i.slot, quantity: i.quantity, subtotal: i.subtotal })),

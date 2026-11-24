@@ -57,7 +57,7 @@ model User {
   phone      String?
   building   String? // free text written by the member (office name)
   floor      String?
-  desk       String?
+  company    String?
   address    String?
   zoneId     String? // catering zone = office the admin assigned / profile selected
   zone       Office? @relation("UserZone", fields: [zoneId], references: [id], onDelete: SetNull)

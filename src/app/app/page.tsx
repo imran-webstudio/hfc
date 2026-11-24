@@ -29,7 +29,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const max = addDays(today, config.maxAdvanceDays);
   const date = isDateStr(dateParam) && dateParam >= today && dateParam <= max ? dateParam : today;
   const zone = viewer.zone;
-  const place = [zone?.name, viewer.floor ? `F${viewer.floor}` : null, viewer.desk ? `Desk ${viewer.desk}` : null].filter(Boolean).join(" · ");
+  const place = [zone?.name, viewer.floor ? `F${viewer.floor}` : null, viewer.company ?? null].filter(Boolean).join(" · ");
   // Day-off row carries the admin's notice note — members must SEE it on the
   // home page (Service Notice banner), not just find the slots closed.
   const offRow = zone ? await prisma.dayOff.findUnique({ where: { officeId_date: { officeId: zone.id, date } } }) : null;

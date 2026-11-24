@@ -27,6 +27,15 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     due: allMembers.reduce((s, m) => s + Math.max(0, -m.balance), 0),
     credit: allMembers.reduce((s, m) => s + Math.max(0, m.balance), 0),
   };
+  // Balance Status pill counts follow the office/floor/search scope, but not
+  // the balance filter itself (All = Due + Credit + Zero).
+  const scopedMembers = await listMembers(scope, { zone, floor, q });
+  const counts = {
+    all: scopedMembers.length,
+    due: scopedMembers.filter((m) => m.balance < 0).length,
+    credit: scopedMembers.filter((m) => m.balance > 0).length,
+    zero: scopedMembers.filter((m) => m.balance === 0).length,
+  };
   const managers = await prisma.officeManager.findMany({ where: { userId: { in: members.map((m) => m.id) } }, select: { userId: true } });
   const managerIds = new Set(managers.map((m) => m.userId));
 
@@ -44,11 +53,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     employeeId: m.employeeId,
     officeName: m.zone?.name ?? null,
     floor: m.floor,
+    company: m.company,
   }));
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 text-3xl font-semibold tracking-tight lg:text-4xl">Users & deposits</h1>
       <UsersBoard
         rows={rows}
         totals={totals}
@@ -69,8 +78,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
                 ]}
               />
               <FilterSelect bare large param="floor" label="Floor" value={floor} options={[{ value: "all", label: "All floors" }, ...floors.map((f) => ({ value: f, label: floorLabel(f) }))]} />
-              <FilterSearch bare large param="q" label="Search" value={q} placeholder="Job ID, name or mobile number" className="w-full" />
-              <BalancePills value={balance} />
+              <FilterSearch bare large param="q" label="Search" value={q} placeholder="Search by name, ID, office, floor or company…" className="w-full" />
+              <BalancePills value={balance} counts={counts} />
             </div>
           </Suspense>
         }
