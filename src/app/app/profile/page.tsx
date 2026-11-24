@@ -3,7 +3,7 @@ import { ProfileForm } from "@/components/member/profile-form";
 import { SignOutButton } from "@/components/shell/account";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { profileComplete, requireViewer } from "@/lib/session";
-import { listFloors, listOffices } from "@/server/offices";
+import { listCompanies, listFloors, listOffices } from "@/server/offices";
 
 export const metadata = { title: "Your profile" };
 
@@ -14,6 +14,9 @@ export default async function ProfilePage() {
   const floors = await listFloors();
   const floorsByOffice: Record<string, string[]> = {};
   for (const f of floors) (floorsByOffice[f.officeId] ??= []).push(f.name);
+  const companies = await listCompanies();
+  const companiesByOffice: Record<string, string[]> = {};
+  for (const c of companies) (companiesByOffice[c.officeId] ??= []).push(c.name);
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">Profile</h1>
@@ -31,6 +34,7 @@ export default async function ProfilePage() {
         firstTime={firstTime}
         offices={offices.map((o) => ({ id: o.id, name: o.name }))}
         floorsByOffice={floorsByOffice}
+        companiesByOffice={companiesByOffice}
         zoneName={viewer.zone?.name ?? null}
         initial={{
           employeeId: viewer.employeeId ?? "",

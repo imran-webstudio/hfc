@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { run } from "@/lib/action";
 import { assertStaff, assertSuperAdmin } from "@/lib/session";
-import { addFloor, addManager, createOffice, deleteFloor, deleteOffice, managerCandidates, removeManager, setLunchCutoff, setOfficeActive, updateFloor, updateOffice } from "@/server/offices";
+import { addCompany, addFloor, addManager, createOffice, deleteCompany, deleteFloor, deleteOffice, managerCandidates, removeManager, setLunchCutoff, setOfficeActive, updateFloor, updateOffice } from "@/server/offices";
 import { officeScope } from "@/lib/session";
 import { UserError } from "@/lib/action";
 import { officeIdsForFilter, resumeCatering, setDayOff, setDayOffRange } from "@/server/stats";
@@ -55,6 +55,22 @@ export async function deleteFloorAction(floorId: string) {
   return run(async () => {
     await assertSuperAdmin();
     await deleteFloor(floorId);
+    refresh();
+  });
+}
+
+export async function addCompanyAction(officeId: string, name: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await addCompany(officeId, name);
+    refresh();
+  });
+}
+
+export async function deleteCompanyAction(companyId: string) {
+  return run(async () => {
+    await assertSuperAdmin();
+    await deleteCompany(companyId);
     refresh();
   });
 }

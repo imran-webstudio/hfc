@@ -27,6 +27,7 @@ async function main() {
   await prisma.ledgerEntry.deleteMany();
   await prisma.order.deleteMany();
   await prisma.floor.deleteMany();
+  await prisma.company.deleteMany();
   await prisma.stockOut.deleteMany();
   await prisma.menuOption.deleteMany();
   await prisma.savedMeal.deleteMany();
@@ -113,6 +114,20 @@ async function main() {
     add(APARAJITA, "2"); // Farhana (manager)
     for (const [office, names] of perOffice) {
       await prisma.floor.createMany({ data: [...names].sort().map((name) => ({ officeId: offices[office], name })) });
+    }
+  }
+
+  // Company registry: predefined per building, one Company row per distinct
+  // member company per building — members pick from these in Profile.
+  {
+    const perOffice = new Map<string, Set<string>>();
+    for (const p of people) {
+      if (!p.office || !p.company) continue;
+      if (!perOffice.has(p.office)) perOffice.set(p.office, new Set());
+      perOffice.get(p.office)!.add(p.company);
+    }
+    for (const [office, names] of perOffice) {
+      await prisma.company.createMany({ data: [...names].sort().map((name) => ({ officeId: offices[office], name })) });
     }
   }
 

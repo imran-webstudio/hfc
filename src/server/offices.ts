@@ -19,6 +19,7 @@ export async function listOfficesWithManagers() {
     include: {
       managers: { include: { user: { select: { id: true, name: true, email: true, role: true, employeeId: true } } } },
       floors: { orderBy: { name: "asc" } },
+      companies: { orderBy: { name: "asc" } },
     },
   });
 }
@@ -94,6 +95,41 @@ export async function deleteFloor(floorId: string) {
   const users = await prisma.user.count({ where: { zoneId: floor.officeId, floor: floor.name } });
   if (users > 0) throw new UserError(`Can't delete: ${users} member(s) use this floor. Move them first.`);
   await prisma.floor.delete({ where: { id: floorId } });
+}
+
+// ------------------------------------------------------------- companies
+// Predefined by admins per building, exactly like floors: members pick one in
+// Profile and User.company stores the name.
+export async function listCompanies(officeId?: string) {
+  return prisma.company.findMany({
+    where: officeId ? { officeId } : {},
+    orderBy: [{ officeId: "asc" }, { name: "asc" }],
+  });
+}
+
+function cleanCompanyName(v: string) {
+  const name = v.trim().replace(/\s+/g, " ");
+  if (!name) throw new UserError("Company name is required.");
+  if (name.length > 60) throw new UserError("Keep the company name under 60 characters.");
+  return name;
+}
+
+export async function addCompany(officeId: string, nameRaw: string) {
+  const name = cleanCompanyName(nameRaw);
+  const office = await prisma.office.findUnique({ where: { id: officeId } });
+  if (!office) throw new UserError("Building not found.");
+  if (await prisma.company.findUnique({ where: { officeId_name: { officeId, name } } })) {
+    throw new UserError("That company already exists for this building.");
+  }
+  return prisma.company.create({ data: { officeId, name } });
+}
+
+export async function deleteCompany(companyId: string) {
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new UserError("Company not found.");
+  const users = await prisma.user.count({ where: { zoneId: company.officeId, company: company.name } });
+  if (users > 0) throw new UserError(`Can't delete: ${users} member(s) use this company. Move them first.`);
+  await prisma.company.delete({ where: { id: companyId } });
 }
 
 function cleanTime(v: string, label: string) {

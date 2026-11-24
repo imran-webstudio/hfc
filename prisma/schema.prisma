@@ -131,6 +131,7 @@ model Office {
   orders   Order[]
   dayOffs  DayOff[]
   floors   Floor[]
+  companies Company[]
 }
 
 // A named floor belonging to one building (Office). Dynamic: admins add/edit/delete
@@ -138,6 +139,19 @@ model Office {
 // simplicity for historical orders); profile/admin selections are validated against
 // this registry.
 model Floor {
+  id       String @id @default(cuid())
+  officeId String
+  name     String
+  office   Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@unique([officeId, name])
+  @@index([officeId])
+}
+
+// A company / organisation inside one building (Office), predefined by admins
+// just like floors. Members pick theirs in Profile; the NAME is stored as a
+// string on User.company and validated against this registry.
+model Company {
   id       String @id @default(cuid())
   officeId String
   name     String

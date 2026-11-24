@@ -159,6 +159,12 @@ export async function updateOwnProfile(userId: string, input: ProfileInput) {
   if (registered.length && !registered.some((f) => f.name === fields.floor)) {
     throw new UserError("Choose a floor from this building's floor list.");
   }
+  // Companies are predefined per building too: when the building has a
+  // company registry, the profile company must be one of them.
+  const registeredCompanies = await prisma.company.findMany({ where: { officeId: office.id }, select: { name: true } });
+  if (registeredCompanies.length && !registeredCompanies.some((c) => c.name === fields.company)) {
+    throw new UserError("Choose a company from this building's company list.");
+  }
   await prisma.user.update({
     where: { id: userId },
     data: { ...fields, building: office.name, zoneId: office.id },

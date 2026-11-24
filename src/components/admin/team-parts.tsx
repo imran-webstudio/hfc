@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { MoreVertical, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import {
+  addCompanyAction,
   addFloorAction,
   addManagerAction,
   createOfficeAction,
+  deleteCompanyAction,
   deleteFloorAction,
   deleteOfficeAction,
   managerCandidatesAction,
@@ -61,7 +63,8 @@ export function NewLocationForm() {
 
 type Manager = { userId: string; name: string; email: string | null; role: string };
 export type FloorRow = { id: string; name: string };
-export type LocationRow = { id: string; name: string; address: string | null; active: boolean; lunchCutoff: string; managers: Manager[]; floors: FloorRow[] };
+export type CompanyRow = { id: string; name: string };
+export type LocationRow = { id: string; name: string; address: string | null; active: boolean; lunchCutoff: string; managers: Manager[]; floors: FloorRow[]; companies: CompanyRow[] };
 
 export function LocationCard({ office }: { office: LocationRow }) {
   const { act, pending } = useAct();
@@ -73,6 +76,7 @@ export function LocationCard({ office }: { office: LocationRow }) {
   const [editName, setEditName] = useState(office.name);
   const [editAddress, setEditAddress] = useState(office.address ?? "");
   const [newFloor, setNewFloor] = useState("");
+  const [newCompany, setNewCompany] = useState("");
   const dirty = cutoff.trim() !== office.lunchCutoff;
 
   return (
@@ -214,10 +218,53 @@ export function LocationCard({ office }: { office: LocationRow }) {
         <p className="mt-1.5 text-[11px] text-ink-muted">New floor will be added immediately.</p>
       </div>
 
+      {/* Companies are predefined per building, like floors: members pick
+          theirs in Profile instead of typing it. */}
+      <div className="mt-4 border-t border-line pt-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Companies{office.companies.length ? ` · ${office.companies.length}` : ""}</p>
+          <p className="text-[11px] text-ink-muted">Manage companies for this location</p>
+        </div>
+        {office.companies.length === 0 ? <p className="mt-2 text-[11px] text-ink-muted">No companies yet — add the first one below.</p> : null}
+        <ul className="mt-2.5 space-y-2">
+          {office.companies.map((c) => (
+            <li key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5">
+              <span className="text-sm font-bold">{c.name}</span>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#E03131]/10 px-3.5 py-1.5 text-xs font-bold text-[#E03131] transition hover:bg-[#E03131]/20 disabled:opacity-50"
+                disabled={pending}
+                onClick={() => act(() => deleteCompanyAction(c.id), { success: "Company deleted" })}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+        <form
+          className="mt-3 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(() => addCompanyAction(office.id, newCompany), { success: "Company added", onOk: () => setNewCompany("") });
+          }}
+        >
+          <input className="input h-11 flex-1 rounded-full px-4" placeholder="Enter company name" value={newCompany} onChange={(e) => setNewCompany(e.target.value)} />
+          <button
+            type="submit"
+            aria-label="Add company"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#5B4CF5] text-white transition hover:bg-[#4A3EDB] disabled:opacity-50"
+            disabled={pending || !newCompany.trim()}
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </form>
+        <p className="mt-1.5 text-[11px] text-ink-muted">New company will be added immediately.</p>
+      </div>
+
       <ConfirmDialog
         open={confirmDelete}
         title={`Remove ${office.name}?`}
-        text="This removes the location with its floors and managers. It can only be removed when no members are assigned to it and it has no orders — if food delivery has just stopped here, deactivating it instead keeps the history."
+        text="This removes the location with its floors, companies and managers. It can only be removed when no members are assigned to it and it has no orders — if food delivery has just stopped here, deactivating it instead keeps the history."
         confirmLabel="Remove location"
         danger
         busy={pending}
