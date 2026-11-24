@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getViewer } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -11,7 +12,8 @@ const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png",
 
 /**
  * Meal photo upload (staff only).
- * Uses Cloudinary when CLOUDINARY_* env vars are set, otherwise writes to public/uploads (local dev only).
+ * Storage priority: Cloudflare R2 (R2_* env vars) → Cloudinary (CLOUDINARY_* env vars)
+ * → public/uploads on disk (local dev only).
  */
 export async function POST(req: Request) {
   const viewer = await getViewer();
@@ -23,15 +25,40 @@ export async function POST(req: Request) {
   const ext = TYPES[file.type];
   if (!ext) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image must be 4.5MB or smaller." }, { status: 400 });
+  const bytes = Buffer.from(await file.arrayBuffer());
 
-  const { CLOUDINARY_CLOUD_NAME: cloud, CLOUDINARY_API_KEY: key, CLOUDINARY_API_SECRET: secret } = process.env;
-  if (cloud && key && secret) {
+  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL } = process.env;
+  if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME && R2_PUBLIC_BASE_URL) {
+    const key = `meals/${randomUUID()}.${ext}`;
+    const s3 = new S3Client({
+      region: "auto",
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
+    });
+    try {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: key,
+          Body: bytes,
+          ContentType: file.type,
+          CacheControl: "public, max-age=31536000, immutable",
+        }),
+      );
+    } catch {
+      return NextResponse.json({ error: "Upload to R2 failed. Check the R2 settings." }, { status: 502 });
+    }
+    return NextResponse.json({ url: `${R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}` });
+  }
+
+  const { CLOUDINARY_CLOUD_NAME: cloud, CLOUDINARY_API_KEY: key2, CLOUDINARY_API_SECRET: secret } = process.env;
+  if (cloud && key2 && secret) {
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = "hfc-meals";
     const signature = createHash("sha1").update(`folder=${folder}&timestamp=${timestamp}${secret}`).digest("hex");
     const body = new FormData();
     body.set("file", file);
-    body.set("api_key", key);
+    body.set("api_key", key2);
     body.set("timestamp", String(timestamp));
     body.set("folder", folder);
     body.set("signature", signature);
@@ -44,11 +71,11 @@ export async function POST(req: Request) {
   }
 
   if (process.env.VERCEL) {
-    return NextResponse.json({ error: "Image uploads need Cloudinary configured." }, { status: 501 });
+    return NextResponse.json({ error: "Image uploads need Cloudflare R2 configured." }, { status: 501 });
   }
   const dir = path.join(process.cwd(), "public", "uploads");
   await mkdir(dir, { recursive: true });
   const name = `${randomUUID()}.${ext}`;
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
+  await writeFile(path.join(dir, name), bytes);
   return NextResponse.json({ url: `/uploads/${name}` });
 }

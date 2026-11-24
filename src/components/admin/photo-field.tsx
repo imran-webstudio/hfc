@@ -5,6 +5,24 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Upload } from "lucide-react";
 
+/** Downscale big photos in the browser (max 1200px, JPEG) so uploads stay small and fast. */
+async function shrink(file: File): Promise<File> {
+  if (file.size <= 800 * 1024) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+    if (scale >= 1) return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext("2d")?.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+    return blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : file;
+  } catch {
+    return file;
+  }
+}
+
 /** Optional meal photo: click or drop an image → /api/upload → URL. */
 export function PhotoField({ value, onChange }: { value: string | null; onChange: (url: string | null) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -16,7 +34,7 @@ export function PhotoField({ value, onChange }: { value: string | null; onChange
     setBusy(true);
     try {
       const body = new FormData();
-      body.set("file", file);
+      body.set("file", await shrink(file));
       const res = await fetch("/api/upload", { method: "POST", body });
       const json = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !json.url) throw new Error(json.error ?? "Upload failed");

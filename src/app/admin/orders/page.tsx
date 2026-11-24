@@ -82,7 +82,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         <OrdersTabs
           orders={rows}
           filters={filters}
-          action={<PhoneOrderSection offices={offices.filter((o) => o.active).map((o) => ({ id: o.id, name: o.name }))} today={today} maxDays={config.maxAdvanceDays} />}
+          action={<PhoneOrderSection today={today} maxDays={config.maxAdvanceDays} />}
         />
       </Suspense>
     </div>

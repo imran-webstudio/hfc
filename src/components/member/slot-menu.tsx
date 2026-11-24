@@ -241,6 +241,9 @@ function SlotBox({
                   ) : null}
                 </div>
                 <p className="mt-2.5 line-clamp-2 text-[16px] font-bold leading-snug">{it.title}</p>
+                {/* What's served with the dish (ভাত + ভাজি + ভর্তা + ডাল …) — the
+                    old website showed this under the title; members order by it. */}
+                {it.description ? <p className="mt-1 text-[13px] leading-snug text-ink-muted">{it.description}</p> : null}
                 <p className="tnum mt-0.5 text-[15px] font-extrabold text-[#5B4CF5]">{taka(it.price)}</p>
                 <div className="mt-2">{!it.available ? <UnavailablePill /> : <Stepper qty={qty} disabled={!s.open} onQty={(q) => setQty(it.id, q)} label={it.title} />}</div>
               </li>

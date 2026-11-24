@@ -220,6 +220,6 @@ export async function searchMembers(actor: Viewer, q: string, officeId?: string)
     },
     orderBy: { name: "asc" },
     take: 12,
-    select: { id: true, name: true, employeeId: true, floor: true, desk: true },
+    select: { id: true, name: true, employeeId: true, floor: true, desk: true, zoneId: true },
   });
 }

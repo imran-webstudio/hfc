@@ -114,7 +114,10 @@ export async function dashboardStats(scope: OfficeScope, f: DashboardFilters) {
     portions: live.reduce((s, o) => s + o.items.reduce((q, i) => q + i.quantity, 0), 0),
     delivered: live.filter((o) => o.status === "DELIVERED").length,
     pending: live.filter((o) => o.status === "PENDING").length,
-    totalSales: live.reduce((s, o) => s + o.amount, 0),
+    // Bill-at-delivery: a sale counts only once the order is DELIVERED.
+    // Pending orders are work to do, not money earned — they must not
+    // inflate Total Sale (owner's rule, 2026-11-24).
+    totalSales: live.filter((o) => o.status === "DELIVERED").reduce((s, o) => s + o.amount, 0),
     cashPaid: cashRows.filter((o) => o.paidAt && dhakaDate(o.paidAt) === f.date).reduce((s, o) => s + o.amount, 0),
     creditBalance,
     activeUsers: users.length,
