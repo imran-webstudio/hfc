@@ -139,6 +139,7 @@ export type ProfileInput = {
   floor: string;
   company: string;
   address: string;
+  image?: string | null;
 };
 
 export async function updateOwnProfile(userId: string, input: ProfileInput) {
@@ -148,8 +149,12 @@ export async function updateOwnProfile(userId: string, input: ProfileInput) {
     floor: input.floor.trim(),
     company: input.company.trim(),
     address: input.address.trim(),
+    // Profile photo URL (uploaded via /api/upload kind=avatar); null removes it.
+    image: input.image?.trim() ? input.image.trim() : null,
   };
-  if (Object.values(fields).some((v) => !v) || !input.officeId) throw new UserError("Please fill in every field.");
+  // The photo is optional — every other field must be filled.
+  const { image: _image, ...required } = fields;
+  if (Object.values(required).some((v) => !v) || !input.officeId) throw new UserError("Please fill in every field.");
   if (!/^[0-9+\-\s()]{6,20}$/.test(fields.phone)) throw new UserError("Enter a valid phone number.");
   const office = await prisma.office.findUnique({ where: { id: input.officeId } });
   if (!office || !office.active) throw new UserError("Choose a valid office.");

@@ -11,15 +11,19 @@ const MAX_BYTES = 4.5 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 /**
- * Meal photo upload (staff only).
+ * Image upload. kind=meal (default): staff only, stored under meals/.
+ * kind=avatar: any signed-in member uploading their own profile photo,
+ * stored under avatars/.
  * Storage priority: Cloudflare R2 (R2_* env vars) → Cloudinary (CLOUDINARY_* env vars)
  * → public/uploads on disk (local dev only).
  */
 export async function POST(req: Request) {
-  const viewer = await getViewer();
-  if (!viewer?.isStaff) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
-
   const form = await req.formData();
+  const kind = form.get("kind") === "avatar" ? "avatar" : "meal";
+  const viewer = await getViewer();
+  if (!viewer) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  if (kind === "meal" && !viewer.isStaff) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
   const ext = TYPES[file.type];
@@ -29,7 +33,7 @@ export async function POST(req: Request) {
 
   const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_BASE_URL } = process.env;
   if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_NAME && R2_PUBLIC_BASE_URL) {
-    const key = `meals/${randomUUID()}.${ext}`;
+    const key = `${kind === "avatar" ? "avatars" : "meals"}/${randomUUID()}.${ext}`;
     const s3 = new S3Client({
       region: "auto",
       endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
   const { CLOUDINARY_CLOUD_NAME: cloud, CLOUDINARY_API_KEY: key2, CLOUDINARY_API_SECRET: secret } = process.env;
   if (cloud && key2 && secret) {
     const timestamp = Math.floor(Date.now() / 1000);
-    const folder = "hfc-meals";
+    const folder = kind === "avatar" ? "hfc-avatars" : "hfc-meals";
     const signature = createHash("sha1").update(`folder=${folder}&timestamp=${timestamp}${secret}`).digest("hex");
     const body = new FormData();
     body.set("file", file);

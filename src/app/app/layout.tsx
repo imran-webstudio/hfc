@@ -37,6 +37,8 @@ export default async function MemberLayout({ children }: { children: React.React
           <Link href="/app" className="text-[26px] font-extrabold leading-none tracking-tight">
             HFC
           </Link>
+          <div className="flex items-center gap-2">
+          <ThemeToggle />
           {negative ? (
             <Link
               href="/app/profile"
@@ -62,6 +64,7 @@ export default async function MemberLayout({ children }: { children: React.React
               {taka(0)}
             </Link>
           )}
+          </div>
         </header>
         <main className="px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-2 lg:px-8 lg:pb-12 lg:pt-8">
           <OfflineBanner />

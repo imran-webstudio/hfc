@@ -1,7 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { ProfileForm } from "@/components/member/profile-form";
 import { SignOutButton } from "@/components/shell/account";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { profileComplete, requireViewer } from "@/lib/session";
 import { listCompanies, listFloors, listOffices } from "@/server/offices";
 
@@ -43,13 +42,10 @@ export default async function ProfilePage() {
           floor: viewer.floor ?? "",
           company: viewer.company ?? "",
           address: viewer.address ?? "",
+          image: viewer.image ?? null,
         }}
       />
-      <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-5 lg:hidden">
-        <p className="text-sm font-semibold">Appearance</p>
-        <ThemeToggle labeled />
-      </div>
-      <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-5 lg:mt-10">
+      <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-5">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{viewer.name ?? "Signed in"}</p>
           <p className="truncate text-xs text-ink-muted">{viewer.email}</p>

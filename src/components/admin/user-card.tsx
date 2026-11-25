@@ -20,6 +20,7 @@ export type UserRow = {
   officeName: string | null;
   floor: string | null;
   company: string | null;
+  image: string | null;
 };
 
 const AVATARS = [
@@ -100,9 +101,14 @@ function UserRowLink({ u }: { u: UserRow }) {
   return (
     <li>
       <Link href={`/admin/users/${u.id}`} className="surface-card flex items-center gap-3 rounded-2xl px-3 py-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold" style={{ background: color.bg, color: color.fg }}>
-          {initials(u.name)}
-        </span>
+        {u.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={u.image} alt={u.name} className="h-11 w-11 shrink-0 rounded-full border border-line object-cover" />
+        ) : (
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold" style={{ background: color.bg, color: color.fg }}>
+            {initials(u.name)}
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate font-semibold">{u.name}</span>

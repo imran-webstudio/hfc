@@ -54,6 +54,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     officeName: m.zone?.name ?? null,
     floor: m.floor,
     company: m.company,
+    image: m.image,
   }));
 
   return (
